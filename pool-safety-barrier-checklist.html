@@ -4,35 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pool Safety Barrier Checklist | Permit Toolkit</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,700;1,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --void:#0E1B2E; --panel:#152840; --panel-2:#1C3350; --hair:#2C4A6B;
-    --gold:#F4C430; --gold-bright:#FFDE59; --ink:#F3F6FA; --ink-dim:#AABFD6; --ink-faint:#6E88A6;
-    --green:#7FC17F; --red:#E0824F;
-  }
-  *{box-sizing:border-box; margin:0; padding:0;}
-  body{background:var(--void); color:var(--ink); font-family:'IBM Plex Sans', sans-serif; padding:28px 20px 60px;}
-  .wrap{max-width:760px; margin:0 auto;}
-  a.back{font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--ink-faint); display:inline-block; margin-bottom:18px;}
-  h1{font-family:'Lora', serif; font-size:26px; font-weight:700; margin-bottom:6px;}
-  .sub{color:var(--ink-dim); font-size:13.5px; margin-bottom:20px;}
-  .warn{background:rgba(224,130,79,0.12); border:1px solid rgba(224,130,79,0.4); border-left:3px solid var(--red); border-radius:6px; padding:14px 16px; font-size:12.5px; color:var(--ink-dim); line-height:1.55; margin-bottom:26px;}
-  .warn b{color:var(--ink);}
-  .progress{background:var(--panel); border:1px solid var(--hair); border-radius:10px; padding:18px 22px; margin-bottom:20px; text-align:center;}
-  .progress .n{font-family:'Lora', serif; font-weight:700; font-size:26px; color:var(--gold-bright);}
-  .progress .l{font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.06em; margin-top:4px;}
-  .check-item{display:flex; align-items:flex-start; gap:14px; background:var(--panel); border:1px solid var(--hair); border-radius:8px; padding:16px 18px; margin-bottom:10px; cursor:pointer;}
-  .check-item input{width:19px; height:19px; margin-top:2px; accent-color:var(--gold); flex-shrink:0;}
-  .check-item .t{font-size:13.5px; color:var(--ink); line-height:1.55;}
-  .check-item .t b{color:var(--gold-bright);}
-  footer{margin-top:30px; text-align:center; font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:var(--ink-faint);}
-</style>
+<link rel="preconnect" href="https://api.fontshare.com">
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&f[]=satoshi@400,500,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./assets/styles.css">
 </head>
-<body>
+<body data-page-type="interior">
 <div class="wrap">
-  <a class="back" href="./index.html">&larr; All Tools</a>
+  <a class="back-link" href="./index.html">&larr; All Tools</a>
   <h1>Pool Safety Barrier Checklist</h1>
   <div class="sub">Florida Residential Swimming Pool Safety Act — Fla. Stat. §515.27.</div>
 
@@ -45,7 +23,7 @@
 
   <div id="checklist"></div>
 
-  <footer>PERMIT TOOLKIT &middot; PER FLA. STAT. §515.27</footer>
+  
 </div>
 
 <script>
@@ -80,5 +58,6 @@
   updateCount();
 })();
 </script>
+<script src="./assets/site.js"></script>
 </body>
 </html>

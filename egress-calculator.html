@@ -3,101 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Egress Opening Calculator — Single Hung, Casement &amp; Horizontal Roller | Majestic Permits</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,700;1,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --void:#0E1B2E;
-    --panel:#152840;
-    --panel-2:#1C3350;
-    --hair:#2C4A6B;
-    --gold:#F4C430;
-    --gold-bright:#FFDE59;
-    --ink:#F3F6FA;
-    --ink-dim:#AABFD6;
-    --ink-faint:#6E88A6;
-    --green:#7FC17F;
-    --red:#E0824F;
-  }
-  *{box-sizing:border-box; margin:0; padding:0;}
-  body{
-    background:var(--void); color:var(--ink);
-    font-family:'IBM Plex Sans', sans-serif;
-    padding:28px 20px 60px;
-  }
-  .wrap{max-width:1080px; margin:0 auto;}
-  h1{font-family:'Lora', serif; font-size:26px; font-weight:700; margin-bottom:6px;}
-  .sub{color:var(--ink-dim); font-size:13.5px; margin-bottom:20px;}
-
-  .warn{
-    background:rgba(224,130,79,0.12); border:1px solid rgba(224,130,79,0.4); border-left:3px solid var(--red);
-    border-radius:6px; padding:14px 16px; font-size:12.5px; color:var(--ink-dim); line-height:1.55; margin-bottom:26px;
-  }
-  .warn b{color:var(--ink);}
-
-  .inputs-card{background:var(--panel); border:1px solid var(--hair); border-radius:10px; padding:22px 24px; margin-bottom:28px;}
-  .inputs-card h2{font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); margin-bottom:16px;}
-  .inputs-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:18px;}
-  @media (max-width:820px){ .inputs-grid{grid-template-columns:1fr 1fr;} }
-
-  .field{}
-  label{display:block; font-size:12.5px; color:var(--ink-dim); margin-bottom:6px;}
-  input[type=number], select{
-    width:100%; background:var(--panel-2); border:1px solid var(--hair); border-radius:6px;
-    color:var(--ink); font-family:'IBM Plex Mono', monospace; font-size:14px; padding:10px 12px;
-  }
-  input[type=number]:focus, select:focus{outline:2px solid var(--gold); outline-offset:1px;}
-  .hint{font-size:11px; color:var(--ink-faint); margin-top:4px;}
-
-  .compare-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:18px;}
-  @media (max-width:820px){ .compare-grid{grid-template-columns:1fr;} }
-
-  .type-card{background:var(--panel); border:1.5px solid var(--hair); border-radius:10px; padding:20px 20px 22px; position:relative; overflow:hidden;}
-  .type-card.pass{border-color:var(--green);}
-  .type-card.fail{border-color:var(--red);}
-  .type-card h3{font-family:'IBM Plex Sans', sans-serif; font-size:15.5px; font-weight:600; margin-bottom:4px;}
-  .type-card .desc{font-size:11.5px; color:var(--ink-faint); margin-bottom:16px; line-height:1.5;}
-
-  .status-badge{
-    position:absolute; top:18px; right:18px; font-family:'IBM Plex Mono', monospace; font-size:10.5px;
-    letter-spacing:0.06em; text-transform:uppercase; padding:5px 10px; border-radius:20px;
-  }
-  .status-badge.pass{background:rgba(127,193,127,0.16); color:var(--green); border:1px solid rgba(127,193,127,0.4);}
-  .status-badge.fail{background:rgba(224,130,79,0.16); color:var(--red); border:1px solid rgba(224,130,79,0.4);}
-
-  .dim-row{display:flex; gap:10px; margin-bottom:12px;}
-  .dim-box{flex:1; background:var(--panel-2); border:1px solid var(--hair); border-radius:8px; padding:12px 10px; text-align:center;}
-  .dim-box .l{font-family:'IBM Plex Mono', monospace; font-size:9.5px; letter-spacing:0.05em; text-transform:uppercase; color:var(--ink-faint);}
-  .dim-box .v{font-family:'Lora', serif; font-weight:700; font-size:19px; color:var(--gold-bright); margin-top:4px;}
-  .dim-box .u{font-size:10px; color:var(--ink-faint); margin-top:1px;}
-
-  .check-list{margin-top:14px; border-top:1px solid var(--hair); padding-top:12px;}
-  .check-row{display:flex; justify-content:space-between; align-items:center; font-size:12px; padding:5px 0; color:var(--ink-dim);}
-  .check-row .mk{font-family:'IBM Plex Mono', monospace; font-weight:600;}
-  .check-row .mk.pass{color:var(--green);}
-  .check-row .mk.fail{color:var(--red);}
-
-  .legend{margin-top:30px; background:var(--panel); border:1px solid var(--hair); border-radius:10px; padding:20px 24px;}
-  .legend h2{font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); margin-bottom:12px;}
-  .legend p{font-size:12.5px; color:var(--ink-dim); line-height:1.7; margin-bottom:8px;}
-  .legend p:last-child{margin-bottom:0;}
-  .legend b{color:var(--ink);}
-
-  footer{margin-top:30px; text-align:center; font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:var(--ink-faint); letter-spacing:0.04em;}
-</style>
+<title>Egress Opening Calculator — Single Hung, Casement &amp; Horizontal Roller</title>
+<link rel="preconnect" href="https://api.fontshare.com">
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&f[]=satoshi@400,500,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./assets/styles.css">
 </head>
-<body>
+<body data-page-type="interior">
 <div class="wrap">
   <h1>Egress Opening Calculator</h1>
-  <div class="sub">Single Hung vs. Casement vs. Horizontal Roller — FBC/IRC R310 emergency escape &amp; rescue openings · Majestic Permits</div>
+  <div class="sub">Single Hung vs. Casement vs. Horizontal Roller — FBC/IRC R310 emergency escape &amp; rescue openings </div>
 
   <div class="warn">
     <b>Estimation tool only — not for permit submission.</b> Net clear opening dimensions vary by manufacturer, frame material, and hardware. This uses simplified, generalized deductions to compare how operating type affects egress — always confirm actual net clear opening against the specific product's tested egress chart or NOA/FPA documentation before specifying a window for a required egress opening.
   </div>
 
-  <div class="inputs-card">
-    <h2>Opening Inputs</h2>
+  <div class="card">
+    <div class="card-label">Opening Inputs</div>
     <div class="inputs-grid">
       <div class="field">
         <label for="unitW">Nominal Unit Width (in)</label>
@@ -140,7 +61,7 @@
     <p>All four must pass for an opening to qualify as code-compliant egress.</p>
   </div>
 
-  <footer>MAJESTIC PERMITS &middot; SIMPLIFIED ESTIMATOR &middot; VERIFY WITH A LICENSED PROFESSIONAL BEFORE PERMIT SUBMISSION</footer>
+  
 </div>
 
 <script>
@@ -228,5 +149,6 @@
   }
   render();
 </script>
+<script src="./assets/site.js"></script>
 </body>
 </html>

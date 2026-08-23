@@ -4,48 +4,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Wind-Borne Debris Region Checker | Permit Toolkit</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,700;1,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --void:#0E1B2E; --panel:#152840; --panel-2:#1C3350; --hair:#2C4A6B;
-    --gold:#F4C430; --gold-bright:#FFDE59; --ink:#F3F6FA; --ink-dim:#AABFD6; --ink-faint:#6E88A6;
-    --green:#7FC17F; --red:#E0824F;
-  }
-  *{box-sizing:border-box; margin:0; padding:0;}
-  body{background:var(--void); color:var(--ink); font-family:'IBM Plex Sans', sans-serif; padding:28px 20px 60px;}
-  .wrap{max-width:760px; margin:0 auto;}
-  a.back{font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--ink-faint); display:inline-block; margin-bottom:18px;}
-  h1{font-family:'Lora', serif; font-size:26px; font-weight:700; margin-bottom:6px;}
-  .sub{color:var(--ink-dim); font-size:13.5px; margin-bottom:20px;}
-  .warn{background:rgba(224,130,79,0.12); border:1px solid rgba(224,130,79,0.4); border-left:3px solid var(--red); border-radius:6px; padding:14px 16px; font-size:12.5px; color:var(--ink-dim); line-height:1.55; margin-bottom:26px;}
-  .warn b{color:var(--ink);}
-  .card{background:var(--panel); border:1px solid var(--hair); border-radius:10px; padding:22px 24px; margin-bottom:22px;}
-  .card h2{font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); margin-bottom:16px;}
-  label{display:block; font-size:12.5px; color:var(--ink-dim); margin-bottom:6px;}
-  select{width:100%; background:var(--panel-2); border:1px solid var(--hair); border-radius:6px; color:var(--ink); font-family:'IBM Plex Mono', monospace; font-size:14px; padding:10px 12px;}
-  select:focus{outline:2px solid var(--gold); outline-offset:1px;}
-  .field{margin-bottom:16px;}
-  .field:last-child{margin-bottom:0;}
-  .result{border-radius:10px; padding:24px; text-align:center; border:1.5px solid var(--hair);}
-  .result.in-region{border-color:var(--gold);}
-  .result.check{border-color:var(--ink-faint);}
-  .result .l{font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-faint);}
-  .result .v{font-family:'Lora', serif; font-weight:700; font-size:22px; color:var(--gold-bright); margin:8px 0;}
-  .result p{font-size:13px; color:var(--ink-dim); line-height:1.6;}
-  footer{margin-top:30px; text-align:center; font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:var(--ink-faint);}
-</style>
+<link rel="preconnect" href="https://api.fontshare.com">
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&f[]=satoshi@400,500,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./assets/styles.css">
 </head>
-<body>
+<body data-page-type="interior">
 <div class="wrap">
-  <a class="back" href="./index.html">&larr; All Tools</a>
+  <a class="back-link" href="./index.html">&larr; All Tools</a>
   <h1>Wind-Borne Debris Region Checker</h1>
   <div class="sub">A general reference for whether impact protection (impact-rated windows/doors or shutters) is likely required for a site.</div>
 
   <div class="warn"><b>General reference, not a site-specific determination.</b> The actual Wind-Borne Debris Region boundary is defined by ASCE 7 wind speed contour maps, not county lines. The exact boundary for a specific address should be confirmed with the local building department or an ASCE 7 map lookup.</div>
 
   <div class="card">
-    <h2>Site Location</h2>
+    <div class="card-label">Site Location</div>
     <div class="field">
       <label for="county">County</label>
       <select id="county">
@@ -72,7 +44,7 @@
     <p id="out-detail">—</p>
   </div>
 
-  <footer>PERMIT TOOLKIT &middot; VERIFY EXACT BOUNDARY WITH YOUR LOCAL BUILDING DEPARTMENT OR ASCE 7 MAP</footer>
+  
 </div>
 
 <script>
@@ -110,5 +82,6 @@
   render();
 })();
 </script>
+<script src="./assets/site.js"></script>
 </body>
 </html>

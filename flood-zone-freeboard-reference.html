@@ -4,46 +4,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Flood Zone &amp; Freeboard Reference | Permit Toolkit</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,700;1,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --void:#0E1B2E; --panel:#152840; --panel-2:#1C3350; --hair:#2C4A6B;
-    --gold:#F4C430; --gold-bright:#FFDE59; --ink:#F3F6FA; --ink-dim:#AABFD6; --ink-faint:#6E88A6;
-  }
-  *{box-sizing:border-box; margin:0; padding:0;}
-  body{background:var(--void); color:var(--ink); font-family:'IBM Plex Sans', sans-serif; padding:28px 20px 60px;}
-  .wrap{max-width:760px; margin:0 auto;}
-  a.back{font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--ink-faint); display:inline-block; margin-bottom:18px;}
-  h1{font-family:'Lora', serif; font-size:26px; font-weight:700; margin-bottom:6px;}
-  .sub{color:var(--ink-dim); font-size:13.5px; margin-bottom:20px;}
-  .warn{background:rgba(224,130,79,0.12); border:1px solid rgba(224,130,79,0.4); border-left:3px solid #E0824F; border-radius:6px; padding:14px 16px; font-size:12.5px; color:var(--ink-dim); line-height:1.55; margin-bottom:26px;}
-  .warn b{color:var(--ink);}
-  .card{background:var(--panel); border:1px solid var(--hair); border-radius:10px; padding:22px 24px; margin-bottom:22px;}
-  .card h2{font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); margin-bottom:16px;}
-  label{display:block; font-size:12.5px; color:var(--ink-dim); margin-bottom:6px;}
-  select{width:100%; background:var(--panel-2); border:1px solid var(--hair); border-radius:6px; color:var(--ink); font-family:'IBM Plex Mono', monospace; font-size:14px; padding:10px 12px;}
-  select:focus{outline:2px solid var(--gold); outline-offset:1px;}
-  .field{margin-bottom:16px;}
-  .field:last-child{margin-bottom:0;}
-  .result{background:linear-gradient(165deg, var(--panel-2), var(--panel)); border:1.5px solid var(--gold); border-radius:10px; padding:22px 24px;}
-  .result .l{font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:6px;}
-  .result h3{font-family:'Lora', serif; font-size:19px; color:var(--gold-bright); margin-bottom:10px;}
-  .result p{font-size:13px; color:var(--ink-dim); line-height:1.65; margin-bottom:10px;}
-  .result p:last-child{margin-bottom:0;}
-  footer{margin-top:30px; text-align:center; font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:var(--ink-faint);}
-</style>
+<link rel="preconnect" href="https://api.fontshare.com">
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&f[]=satoshi@400,500,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./assets/styles.css">
 </head>
-<body>
+<body data-page-type="interior">
 <div class="wrap">
-  <a class="back" href="./index.html">&larr; All Tools</a>
+  <a class="back-link" href="./index.html">&larr; All Tools</a>
   <h1>Flood Zone &amp; Freeboard Reference</h1>
   <div class="sub">General education on FEMA flood zones and Florida freeboard requirements — not a site-specific elevation lookup.</div>
 
   <div class="warn"><b>This does not tell you your actual required elevation.</b> Base Flood Elevation (BFE) is address-specific and comes from the FEMA FIRM panel for that property. Local freeboard requirements are set at the municipal level and vary by city, not just by county. Always confirm both directly with the local building or floodplain management department.</div>
 
   <div class="card">
-    <h2>Flood Zone</h2>
+    <div class="card-label">Flood Zone</div>
     <div class="field">
       <label for="zone">FEMA Flood Zone</label>
       <select id="zone">
@@ -61,7 +35,7 @@
 
   <div class="result" id="result"></div>
 
-  <footer>PERMIT TOOLKIT &middot; VERIFY BFE AND LOCAL FREEBOARD WITH YOUR BUILDING DEPARTMENT</footer>
+  
 </div>
 
 <script>
@@ -138,5 +112,6 @@
   render();
 })();
 </script>
+<script src="./assets/site.js"></script>
 </body>
 </html>

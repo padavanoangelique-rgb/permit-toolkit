@@ -3,84 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Design Pressure Estimator — Windows & Doors | Majestic Permits</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,700;1,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --void:#0E1B2E;
-    --panel:#152840;
-    --panel-2:#1C3350;
-    --hair:#2C4A6B;
-    --gold:#F4C430;
-    --gold-bright:#FFDE59;
-    --ink:#F3F6FA;
-    --ink-dim:#AABFD6;
-    --ink-faint:#6E88A6;
-    --green:#7FC17F;
-    --red:#E0824F;
-  }
-  *{box-sizing:border-box; margin:0; padding:0;}
-  body{
-    background:var(--void); color:var(--ink);
-    font-family:'IBM Plex Sans', sans-serif;
-    padding:28px 20px 60px;
-  }
-  .wrap{max-width:920px; margin:0 auto;}
-  h1{font-family:'Lora', serif; font-size:26px; font-weight:700; margin-bottom:6px;}
-  .sub{color:var(--ink-dim); font-size:13.5px; margin-bottom:20px;}
-
-  .warn{
-    background:rgba(224,130,79,0.12); border:1px solid rgba(224,130,79,0.4); border-left:3px solid var(--red);
-    border-radius:6px; padding:14px 16px; font-size:12.5px; color:var(--ink-dim); line-height:1.55; margin-bottom:26px;
-  }
-  .warn b{color:var(--ink);}
-
-  .grid{display:grid; grid-template-columns:1fr 1fr; gap:24px;}
-  @media (max-width:760px){ .grid{grid-template-columns:1fr;} }
-
-  .card{background:var(--panel); border:1px solid var(--hair); border-radius:10px; padding:22px 24px;}
-  .card h2{font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); margin-bottom:16px;}
-
-  .field{margin-bottom:16px;}
-  .field:last-child{margin-bottom:0;}
-  label{display:block; font-size:12.5px; color:var(--ink-dim); margin-bottom:6px;}
-  input[type=number], select{
-    width:100%; background:var(--panel-2); border:1px solid var(--hair); border-radius:6px;
-    color:var(--ink); font-family:'IBM Plex Mono', monospace; font-size:14px; padding:10px 12px;
-  }
-  input[type=number]:focus, select:focus{outline:2px solid var(--gold); outline-offset:1px;}
-  .hint{font-size:11px; color:var(--ink-faint); margin-top:4px;}
-
-  .results{margin-top:24px;}
-  .result-row{display:flex; gap:14px; margin-bottom:14px;}
-  .result-box{flex:1; background:var(--panel-2); border:1px solid var(--hair); border-radius:8px; padding:16px 18px; text-align:center;}
-  .result-box .l{font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-faint);}
-  .result-box .v{font-family:'Lora', serif; font-weight:700; font-size:26px; color:var(--gold-bright); margin-top:6px;}
-  .result-box .v.neg{color:var(--red);}
-  .result-box .u{font-size:11px; color:var(--ink-faint); margin-top:2px;}
-
-  .final{
-    margin-top:8px; background:linear-gradient(165deg, var(--panel-2), var(--panel));
-    border:1.5px solid var(--gold); border-radius:10px; padding:20px 22px; text-align:center;
-  }
-  .final .l{font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--ink-dim);}
-  .final .v{font-family:'Lora', serif; font-weight:700; font-size:34px; color:var(--gold-bright); margin-top:6px;}
-  .final .v span{font-size:16px; color:var(--ink-dim); font-weight:500;}
-
-  .steps{margin-top:26px; font-size:12.5px; color:var(--ink-dim); line-height:1.8;}
-  .steps h2{font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); margin-bottom:10px;}
-  .steps .row{display:flex; justify-content:space-between; border-bottom:1px solid var(--hair); padding:8px 0; font-family:'IBM Plex Mono', monospace; font-size:12px;}
-  .steps .row span:first-child{color:var(--ink-faint);}
-  .steps .row span:last-child{color:var(--ink);}
-
-  footer{margin-top:30px; text-align:center; font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:var(--ink-faint); letter-spacing:0.04em;}
-</style>
+<title>Design Pressure Estimator — Windows & Doors</title>
+<link rel="preconnect" href="https://api.fontshare.com">
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&f[]=satoshi@400,500,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./assets/styles.css">
 </head>
-<body>
+<body data-page-type="interior">
 <div class="wrap">
   <h1>Design Pressure Estimator</h1>
-  <div class="sub">Windows &amp; doors — ASCE 7 components &amp; cladding method · Majestic Permits</div>
+  <div class="sub">Windows &amp; doors — ASCE 7 components &amp; cladding method </div>
 
   <div class="warn">
     <b>Estimation tool only — not for permit submission.</b> This uses simplified, approximate coefficient values to give a ballpark design pressure. Actual permit-ready calculations must be performed with the official ASCE 7 tables/figures (or engineering software) and sealed by a Florida-licensed engineer. For product selection, match against the window/door's tested DP rating on its Miami-Dade NOA, Broward BC approval, or Florida Product Approval — don't install based on this number alone.
@@ -88,7 +19,7 @@
 
   <div class="grid">
     <div class="card">
-      <h2>Site &amp; Building Inputs</h2>
+      <div class="card-label">Site &amp; Building Inputs</div>
       <div class="field">
         <label for="V">Basic Wind Speed, V (mph)</label>
         <input type="number" id="V" value="170" step="1">
@@ -127,7 +58,7 @@
     </div>
 
     <div class="card">
-      <h2>Opening Inputs</h2>
+      <div class="card-label">Opening Inputs</div>
       <div class="field">
         <label for="enclosure">Enclosure Classification</label>
         <select id="enclosure">
@@ -196,7 +127,7 @@
     <div class="row"><span>ASD factor applied</span><span id="trace-asd">—</span></div>
   </div>
 
-  <footer>MAJESTIC PERMITS &middot; SIMPLIFIED ESTIMATOR &middot; VERIFY WITH A LICENSED ENGINEER BEFORE PERMIT SUBMISSION</footer>
+  
 </div>
 
 <script>
@@ -283,5 +214,6 @@
   document.querySelectorAll('input, select').forEach(el => el.addEventListener('input', calculate));
   calculate();
 </script>
+<script src="./assets/site.js"></script>
 </body>
 </html>
