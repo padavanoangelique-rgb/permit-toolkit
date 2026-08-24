@@ -110,7 +110,7 @@
           '<div class="brand-mark">PT</div>' +
           '<div class="brand-text">' +
             '<div class="brand-name">Permit Toolkit</div>' +
-            '<div class="brand-tag">Free Contractor Tools</div>' +
+            '<div class="brand-tag">by <span class="brand-parent">PermitAIO</span></div>' +
           '</div>' +
         '</a>' +
         '<div class="header-right">' +
@@ -206,13 +206,15 @@
   );
 
   // --- Site footer ---
+  var YEAR = new Date().getFullYear();
   var footer = el(
     '<footer class="site-footer">' +
       '<div class="row">' +
         '<a href="/index.html">All tools</a>' +
         '<a href="' + AIO_URL + '" target="_blank" rel="noopener">PermitAIO</a>' +
       '</div>' +
-      '<div>Permit Toolkit · permittoolkit.com · Reference tools only — verify with the local building department.</div>' +
+      '<div class="footer-disclaimer">Reference tools only — verify with the local building department before permit submission.</div>' +
+      '<div class="footer-copyright">© ' + YEAR + ' PermitAIO. Permit Toolkit is a product of PermitAIO. All rights reserved.</div>' +
     '</footer>'
   );
 

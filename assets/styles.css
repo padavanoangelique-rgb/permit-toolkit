@@ -63,6 +63,7 @@ button{font-family:inherit; cursor:pointer; border:0; background:none;}
 .brand-text{display:flex; flex-direction:column; line-height:1.1;}
 .brand-name{font-family:'General Sans','Satoshi',sans-serif; font-weight:600; font-size:16px; color:var(--ink); letter-spacing:-0.01em;}
 .brand-tag{font-size:10px; font-weight:500; letter-spacing:0.08em; text-transform:uppercase; color:var(--faint); margin-top:1px;}
+.brand-parent{color:#2563eb; font-weight:700; letter-spacing:0.04em;}
 .header-cta{
   display:inline-flex; align-items:center; gap:6px;
   padding:8px 14px; border-radius:8px;
@@ -471,6 +472,8 @@ input[type=number]:focus, input[type=text]:focus, input[type=email]:focus, selec
 }
 .site-footer a{color:var(--muted); text-decoration:underline;}
 .site-footer .row{display:flex; gap:16px; justify-content:center; flex-wrap:wrap; margin-bottom:8px;}
+.site-footer .footer-disclaimer{margin-bottom:8px;}
+.site-footer .footer-copyright{font-size:11px; color:var(--faint); opacity:0.85;}
 
 /* ========== Page-specific compatibility ========== */
 /* Pool safety checklist */
