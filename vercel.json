@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "cleanUrls": false,
+  "trailingSlash": false,
+  "redirects": [
+    { "source": "/pool-safety-barrier-checklist.html", "destination": "/", "statusCode": 301 },
+    { "source": "/pool-safety-barrier-checklist",      "destination": "/", "statusCode": 301 },
+    { "source": "/noc-threshold-checker.html",         "destination": "/", "statusCode": 301 },
+    { "source": "/noc-threshold-checker",              "destination": "/", "statusCode": 301 }
+  ]
+}
