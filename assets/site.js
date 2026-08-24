@@ -255,6 +255,20 @@
     return p === '' || p === '/index' || p === '/index.html' || p.endsWith('/index.html');
   }
 
+  // Reads and validates the `?next=` param: must be a same-site path
+  // (starts with a single '/', never '//' or an absolute URL) so it can't
+  // be abused as an open redirect.
+  function getNextParam(){
+    var raw;
+    try {
+      raw = new URLSearchParams(location.search).get('next');
+    } catch(e){ raw = null; }
+    if (!raw) return null;
+    try { raw = decodeURIComponent(raw); } catch(e){}
+    if (!/^\/(?!\/)/.test(raw)) return null;
+    return raw;
+  }
+
   function buildGate(){
     var overlay = el(
       '<div class="pt-gate" role="dialog" aria-modal="true" aria-labelledby="pt-gate-title">' +
@@ -333,6 +347,18 @@
         referrer: (document.referrer || '').slice(0,200)
       };
 
+      // On success, send them wherever they were originally headed
+      // (the tool they clicked before the gate intercepted them) instead
+      // of always dropping them on the homepage grid.
+      function onUnlocked(){
+        var next = getNextParam();
+        if (next) {
+          location.href = next;
+          return;
+        }
+        revealHomepageGrid();
+      }
+
       postLead(payload).then(function(res){
         // Even 409 duplicate-email is treated as success (Prefer: resolution=ignore-duplicates
         // makes duplicate inserts return 201, but be defensive)
@@ -342,7 +368,7 @@
           setTimeout(function(){
             document.documentElement.classList.remove('pt-gate-open');
             gate.remove();
-            revealHomepageGrid();
+            onUnlocked();
           }, 250);
         } else {
           errEl.textContent = 'Something went wrong. Please try again.';
@@ -355,7 +381,7 @@
         markCaptured(email);
         document.documentElement.classList.remove('pt-gate-open');
         gate.remove();
-        revealHomepageGrid();
+        onUnlocked();
       });
     });
 
@@ -398,6 +424,10 @@
     if (isCaptured()) return;
     if (isHomepage()) {
       installHomepageWall();
+      // Arrived here bounced from a specific tool (shared link or direct
+      // card click before ever unlocking) — open the gate immediately
+      // instead of making them click "Browse tools" first.
+      if (getNextParam()) showGate();
     } else {
       // Send them home so the wall can capture them there.
       var current = location.pathname + location.search;
