@@ -1,13 +1,46 @@
-// Permit Toolkit — shared header, PermitAIO promo, footer injection.
-// Runs on every page. Interior pages use data-page-type="interior" to also inject
-// a top compact PermitAIO bar just below the header.
+// Permit Toolkit — shared header, PermitAIO promo, footer, and email gate.
+// Runs on every page. Interior pages use data-page-type="interior" for the compact top bar.
 (function(){
   var AIO_URL = 'https://permitaio.com';
+
+  // Supabase RPC — uses a security-definer function to capture leads.
+  // The function bypasses RLS quirks and silently deduplicates by lowercased email.
+  var SUPA_URL = 'https://gkckgzruadshnblxtxiq.supabase.co';
+  var SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrY2tnenJ1YWRzaG5ibHh0eGlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0MDU3NTIsImV4cCI6MjEwMjk4MTc1Mn0.xNEkA5pckTyWFW5XIJGcnQAVxkwBqLfKTCV8WCcQOg0';
+  var CAPTURE_RPC = 'capture_permit_toolkit_lead';
+  var LS_KEY = 'pt_lead_captured_v1';
 
   function el(html){
     var d = document.createElement('div');
     d.innerHTML = html.trim();
     return d.firstChild;
+  }
+
+  function isCaptured(){
+    try { return !!localStorage.getItem(LS_KEY); } catch(e){ return false; }
+  }
+  function markCaptured(email){
+    try { localStorage.setItem(LS_KEY, JSON.stringify({email:email, at:new Date().toISOString()})); } catch(e){}
+  }
+
+  function postLead(payload){
+    // Call the security-definer RPC. Function handles dedup and returns {ok:true}.
+    return fetch(SUPA_URL + '/rest/v1/rpc/' + CAPTURE_RPC, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_ANON,
+        'Authorization': 'Bearer ' + SUPA_ANON,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        p_email: payload.email,
+        p_role: payload.role || null,
+        p_source: payload.source || 'permit-toolkit',
+        p_first_tool: payload.first_tool || null,
+        p_user_agent: payload.user_agent || null,
+        p_referrer: payload.referrer || null
+      })
+    });
   }
 
   // --- Header ---
@@ -43,7 +76,6 @@
           '<span class="aio-bar-cta">Try PermitAIO free →</span>' +
         '</a>'
       );
-      // insert after the back link if present, else at top of wrap
       var back = wrap.querySelector('.back-link');
       if (back) {
         back.parentNode.insertBefore(bar, back.nextSibling);
@@ -97,34 +129,142 @@
   document.body.appendChild(promo);
   document.body.appendChild(footer);
 
-  // Email capture handler — stores in localStorage + posts to a placeholder endpoint.
-  // Wire this to your real backend (Supabase, Formspree, Mailchimp, etc.) later.
-  var form = document.getElementById('aioEmailForm');
-  if (form) {
-    form.addEventListener('submit', function(e){
+  // Footer email form → Supabase
+  var footerForm = document.getElementById('aioEmailForm');
+  if (footerForm) {
+    footerForm.addEventListener('submit', function(e){
       e.preventDefault();
-      var input = form.querySelector('input[type=email]');
+      var input = footerForm.querySelector('input[type=email]');
       var okEl = document.getElementById('aioEmailOk');
       var email = (input.value || '').trim();
-      if (!email || email.indexOf('@') === -1) {
-        input.focus();
-        return;
-      }
-      try {
-        var list = JSON.parse(localStorage.getItem('pt_emails') || '[]');
-        list.push({email: email, at: new Date().toISOString(), page: location.pathname});
-        localStorage.setItem('pt_emails', JSON.stringify(list));
-      } catch(err){}
-      // Fire-and-forget beacon to a placeholder endpoint.
-      // Replace with your real endpoint when ready.
-      try {
-        var payload = JSON.stringify({email: email, source: 'permittoolkit', page: location.pathname});
-        if (navigator.sendBeacon) {
-          navigator.sendBeacon('/api/subscribe', new Blob([payload], {type:'application/json'}));
-        }
-      } catch(err){}
+      if (!email || email.indexOf('@') === -1) { input.focus(); return; }
+      postLead({
+        email: email,
+        source: 'permit-toolkit-footer',
+        first_tool: location.pathname,
+        user_agent: navigator.userAgent.slice(0,200),
+        referrer: (document.referrer || '').slice(0,200)
+      }).catch(function(){});
+      markCaptured(email);
       input.value = '';
       if (okEl) okEl.hidden = false;
     });
+  }
+
+  // ========================================================================
+  //  EMAIL GATE — one-time, remembered forever via localStorage.
+  //  Skips on the homepage (index.html / "/") so people can browse tool cards.
+  //  Blocks every interior tool page until email is submitted.
+  // ========================================================================
+  function isHomepage(){
+    var p = location.pathname.replace(/\/$/,'');
+    return p === '' || p === '/index' || p === '/index.html' || p.endsWith('/index.html');
+  }
+
+  function buildGate(){
+    var overlay = el(
+      '<div class="pt-gate" role="dialog" aria-modal="true" aria-labelledby="pt-gate-title">' +
+        '<div class="pt-gate-card">' +
+          '<div class="pt-gate-badge">FREE FOREVER</div>' +
+          '<h2 id="pt-gate-title">Enter your email to use the free tools</h2>' +
+          '<p class="pt-gate-sub">One email, unlimited access to all 13 calculators — forever. No login, no password. Built by the team behind <b>PermitAIO</b>.</p>' +
+          '<form class="pt-gate-form" id="ptGateForm" novalidate>' +
+            '<label class="pt-gate-label">Email <span aria-hidden="true">*</span>' +
+              '<input type="email" name="email" required autocomplete="email" placeholder="you@company.com" />' +
+            '</label>' +
+            '<label class="pt-gate-label">I am a…' +
+              '<select name="role">' +
+                '<option value="">Select one (optional)</option>' +
+                '<option value="contractor">Licensed contractor</option>' +
+                '<option value="subcontractor">Subcontractor / installer</option>' +
+                '<option value="architect">Architect / designer</option>' +
+                '<option value="engineer">Engineer</option>' +
+                '<option value="expediter">Permit expediter</option>' +
+                '<option value="homeowner">Homeowner</option>' +
+                '<option value="inspector">Inspector / plans reviewer</option>' +
+                '<option value="other">Other</option>' +
+              '</select>' +
+            '</label>' +
+            '<button type="submit" class="pt-gate-btn">Unlock the tools →</button>' +
+            '<div class="pt-gate-err" id="ptGateErr" hidden></div>' +
+            '<div class="pt-gate-fine">We\'ll never sell your email. Unsubscribe anytime.</div>' +
+          '</form>' +
+        '</div>' +
+      '</div>'
+    );
+    return overlay;
+  }
+
+  function showGate(){
+    if (document.querySelector('.pt-gate')) return;
+    // Freeze page scroll behind overlay
+    document.documentElement.classList.add('pt-gate-open');
+    var gate = buildGate();
+    document.body.appendChild(gate);
+
+    var form = gate.querySelector('#ptGateForm');
+    var errEl = gate.querySelector('#ptGateErr');
+    var btn = gate.querySelector('.pt-gate-btn');
+
+    form.addEventListener('submit', function(e){
+      e.preventDefault();
+      var emailInput = form.querySelector('input[name=email]');
+      var roleSel = form.querySelector('select[name=role]');
+      var email = (emailInput.value || '').trim();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        errEl.textContent = 'Please enter a valid email address.';
+        errEl.hidden = false;
+        emailInput.focus();
+        return;
+      }
+      errEl.hidden = true;
+      btn.disabled = true;
+      btn.textContent = 'Unlocking…';
+
+      var payload = {
+        email: email,
+        role: roleSel.value || null,
+        source: 'permit-toolkit-gate',
+        first_tool: location.pathname,
+        user_agent: navigator.userAgent.slice(0,200),
+        referrer: (document.referrer || '').slice(0,200)
+      };
+
+      postLead(payload).then(function(res){
+        // Even 409 duplicate-email is treated as success (Prefer: resolution=ignore-duplicates
+        // makes duplicate inserts return 201, but be defensive)
+        if (res.ok || res.status === 409) {
+          markCaptured(email);
+          gate.classList.add('pt-gate-closing');
+          setTimeout(function(){
+            document.documentElement.classList.remove('pt-gate-open');
+            gate.remove();
+          }, 250);
+        } else {
+          errEl.textContent = 'Something went wrong. Please try again.';
+          errEl.hidden = false;
+          btn.disabled = false;
+          btn.textContent = 'Unlock the tools →';
+        }
+      }).catch(function(){
+        // Network failure — save locally and let them through anyway.
+        markCaptured(email);
+        document.documentElement.classList.remove('pt-gate-open');
+        gate.remove();
+      });
+    });
+
+    // Focus the email field for accessibility
+    setTimeout(function(){
+      var inp = gate.querySelector('input[name=email]');
+      if (inp) inp.focus();
+    }, 60);
+  }
+
+  // Trigger the gate on every non-homepage page unless already captured.
+  if (!isCaptured() && !isHomepage()) {
+    // Slight delay so the page renders first (better perceived value + SEO)
+    if (document.readyState === 'complete') showGate();
+    else window.addEventListener('load', function(){ setTimeout(showGate, 150); });
   }
 })();

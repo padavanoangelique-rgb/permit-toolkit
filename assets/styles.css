@@ -541,3 +541,161 @@ input[type=number]:focus, input[type=text]:focus, input[type=email]:focus, selec
 @media (max-width:760px){.field.row-2{grid-column:span 1;}}
 
 /* Old .sub class still used on interior pages under .wrap — already aliased above */
+
+/* ============================================================ */
+/*  Email gate overlay                                          */
+/* ============================================================ */
+html.pt-gate-open, html.pt-gate-open body { overflow: hidden; }
+
+.pt-gate {
+  position: fixed; inset: 0;
+  background: rgba(11, 11, 12, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  animation: ptGateFadeIn 0.25s ease-out;
+}
+.pt-gate.pt-gate-closing { animation: ptGateFadeOut 0.25s ease-in forwards; }
+
+@keyframes ptGateFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes ptGateFadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+.pt-gate-card {
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.35), 0 8px 20px rgba(0,0,0,0.15);
+  width: 100%;
+  max-width: 460px;
+  padding: 32px 30px 28px;
+  animation: ptGateSlideUp 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid #e2e8f0;
+}
+@keyframes ptGateSlideUp {
+  from { transform: translateY(20px) scale(0.98); opacity: 0; }
+  to   { transform: translateY(0) scale(1);       opacity: 1; }
+}
+
+.pt-gate-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  font-family: "General Sans", sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.pt-gate-card h2 {
+  font-family: "General Sans", sans-serif;
+  font-size: 24px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--ink, #0b0b0c);
+  margin: 0 0 10px;
+  font-weight: 700;
+}
+
+.pt-gate-sub {
+  color: #475569;
+  font-size: 14.5px;
+  line-height: 1.5;
+  margin: 0 0 22px;
+}
+.pt-gate-sub b { color: var(--primary); font-weight: 600; }
+
+.pt-gate-form { display: flex; flex-direction: column; gap: 14px; }
+
+.pt-gate-label {
+  display: block;
+  font-family: "General Sans", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #334155;
+  text-transform: none;
+}
+.pt-gate-label span { color: var(--primary); }
+
+.pt-gate-label input,
+.pt-gate-label select {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 12px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--ink, #0b0b0c);
+  font-family: "Satoshi", system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.pt-gate-label select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='none' stroke='%23475569' stroke-width='1.5' d='M2.5 4.5l3.5 3.5 3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 36px;
+}
+.pt-gate-label input:focus,
+.pt-gate-label select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+.pt-gate-btn {
+  margin-top: 6px;
+  padding: 14px 20px;
+  background: var(--primary);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-family: "General Sans", sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.pt-gate-btn:hover:not(:disabled) { background: var(--primary-hover); }
+.pt-gate-btn:active:not(:disabled) { transform: translateY(1px); }
+.pt-gate-btn:disabled { opacity: 0.7; cursor: default; }
+
+.pt-gate-err {
+  color: #dc2626;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+.pt-gate-fine {
+  font-size: 12px;
+  color: #94a3b8;
+  text-align: center;
+  margin-top: 6px;
+}
+
+@media (max-width: 480px) {
+  .pt-gate-card { padding: 24px 20px 22px; border-radius: 16px; }
+  .pt-gate-card h2 { font-size: 21px; }
+  .pt-gate-sub { font-size: 13.5px; }
+}
