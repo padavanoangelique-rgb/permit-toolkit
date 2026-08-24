@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Window Configuration Builder — Fit Units Into an Opening | Permit Toolkit</title>
+<meta name="description" content="Design multi-unit window and door configurations for a total masonry or rough opening. Auto-sizes single hung, casement, fixed, and transom combinations with mullion allowances.">
+<link rel="preconnect" href="https://api.fontshare.com">
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&f[]=satoshi@400,500,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./assets/styles.css">
+<style>
+  .layout-grid{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr));
+    gap:10px; margin-top:6px;
+  }
+  .layout-card{
+    padding:14px 12px; background:var(--surface-2); border:2px solid var(--border);
+    border-radius:10px; cursor:pointer; text-align:center; transition:all .15s;
+    display:flex; flex-direction:column; align-items:center; gap:10px;
+  }
+  .layout-card:hover{border-color:var(--border-strong);}
+  .layout-card.active{border-color:var(--primary); background:#eff6ff;}
+  .layout-card svg{width:70px; height:60px;}
+  .layout-card .lc-name{font-size:12px; font-weight:600; color:var(--ink); line-height:1.2;}
+  .layout-card .lc-desc{font-size:11px; color:var(--muted); line-height:1.2;}
+
+  .cfg-canvas{
+    background:var(--surface-2); border:1px solid var(--border); border-radius:12px;
+    padding:32px; margin:20px 0; overflow:hidden;
+  }
+  .cfg-canvas svg{width:100%; height:auto; max-height:520px; display:block;}
+
+  .unit-summary{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+    gap:12px; margin-top:16px;
+  }
+  .unit-card{
+    background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:14px 16px;
+  }
+  .unit-card .uc-tag{
+    display:inline-block; font-size:10px; letter-spacing:0.08em; text-transform:uppercase;
+    font-weight:700; color:var(--primary); background:#eff6ff; padding:3px 8px; border-radius:5px;
+    margin-bottom:8px;
+  }
+  .unit-card .uc-name{font-family:'General Sans',system-ui,sans-serif; font-size:15px; font-weight:600; color:var(--ink); margin-bottom:4px;}
+  .unit-card .uc-dim{font-family:'JetBrains Mono','SF Mono',Menlo,monospace; font-size:14px; color:var(--ink-2); font-weight:500;}
+  .unit-card .uc-hint{font-size:12px; color:var(--muted); margin-top:6px; line-height:1.4;}
+
+  .cfg-actions{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .cfg-btn{
+    font-size:13px; font-weight:600; padding:9px 14px; border-radius:8px;
+    background:var(--surface-2); color:var(--ink); border:1px solid var(--border);
+    cursor:pointer; transition:all .15s;
+  }
+  .cfg-btn:hover{background:var(--primary); color:#fff; border-color:var(--primary);}
+  .cfg-btn.primary{background:var(--primary); color:#fff; border-color:var(--primary);}
+  .cfg-btn.primary:hover{background:var(--primary-hover); border-color:var(--primary-hover);}
+
+  .totals-row{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));
+    gap:10px; margin-top:16px;
+  }
+  .totals-stat{
+    padding:12px 14px; background:var(--bg); border:1px solid var(--border); border-radius:10px;
+  }
+  .totals-stat .ts-label{font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--faint); font-weight:600; margin-bottom:3px;}
+  .totals-stat .ts-value{font-family:'General Sans',system-ui,sans-serif; font-size:18px; font-weight:600; color:var(--ink);}
+</style>
+</head>
+<body data-page-type="interior">
+<div class="wrap-narrow">
+  <a class="back-link" href="./index.html">← All Tools</a>
+  <h1>Window Configuration Builder</h1>
+  <div class="page-sub">Given a total opening size, calculate what single-hung, casement, fixed, or combination window layouts fit — with mullion allowances and manufacturer-standard tolerances. Generates a labeled sketch you can print or screenshot for the permit set.</div>
+
+  <div class="warn">
+    <b>Sketch tool only.</b> Uses generic industry-standard tolerances (3/8" perimeter shim, 1-1/4" structural mullion). Every configuration must be verified against the specific product's NOA / Florida Product Approval installation detail — mullion size and DP requirements vary by manufacturer and product line.
+  </div>
+
+  <div class="card">
+    <div class="card-label">Total Opening</div>
+    <div class="inputs-grid">
+      <div class="field">
+        <label for="totalW">Total Opening Width (in)</label>
+        <input type="number" id="totalW" value="100" step="0.125" min="0">
+        <div class="hint">Rough or masonry opening — as measured on-site.</div>
+      </div>
+      <div class="field">
+        <label for="totalH">Total Opening Height (in)</label>
+        <input type="number" id="totalH" value="100" step="0.125" min="0">
+      </div>
+      <div class="field">
+        <label for="wallCfg">Wall Type</label>
+        <select id="wallCfg">
+          <option value="frame" selected>Frame (RO)</option>
+          <option value="masonry">Masonry (MO)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="mullionW">Mullion Width (in)</label>
+        <input type="number" id="mullionW" value="1.25" step="0.125" min="0.5" max="4">
+        <div class="hint">Structural mullion between units.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <div class="card-label">Layout</div>
+    <div class="layout-grid" id="layoutGrid">
+      <button class="layout-card active" data-layout="single">
+        <svg viewBox="0 0 60 50"><rect x="4" y="4" width="52" height="42" fill="none" stroke="#0b0b0c" stroke-width="1.5"/><line x1="4" y1="25" x2="56" y2="25" stroke="#0b0b0c" stroke-width="0.75" stroke-dasharray="2 2"/><path d="M10 42 L30 30 L50 42" fill="none" stroke="#0b0b0c" stroke-width="0.75"/></svg>
+        <div>
+          <div class="lc-name">Single Hung</div>
+          <div class="lc-desc">1 unit, bottom sash operates</div>
+        </div>
+      </button>
+      <button class="layout-card" data-layout="double">
+        <svg viewBox="0 0 60 50"><rect x="4" y="4" width="52" height="42" fill="none" stroke="#0b0b0c" stroke-width="1.5"/><line x1="4" y1="25" x2="56" y2="25" stroke="#0b0b0c" stroke-width="1"/><path d="M10 42 L30 30 L50 42" fill="none" stroke="#0b0b0c" stroke-width="0.75"/><path d="M10 8 L30 20 L50 8" fill="none" stroke="#0b0b0c" stroke-width="0.75"/></svg>
+        <div>
+          <div class="lc-name">Double Hung</div>
+          <div class="lc-desc">1 unit, both sashes operate</div>
+        </div>
+      </button>
+      <button class="layout-card" data-layout="casement">
+        <svg viewBox="0 0 60 50"><rect x="4" y="4" width="52" height="42" fill="none" stroke="#0b0b0c" stroke-width="1.5"/><path d="M4 25 L56 4 M4 25 L56 46" fill="none" stroke="#0b0b0c" stroke-width="0.75"/></svg>
+        <div>
+          <div class="lc-name">Casement</div>
+          <div class="lc-desc">1 unit, side-hinged</div>
+        </div>
+      </button>
+      <button class="layout-card" data-layout="fixed">
+        <svg viewBox="0 0 60 50"><rect x="4" y="4" width="52" height="42" fill="none" stroke="#0b0b0c" stroke-width="1.5"/><text x="30" y="30" text-anchor="middle" font-size="9" fill="#475569" font-family="Satoshi">FIXED</text></svg>
+        <div>
+          <div class="lc-name">Fixed Picture</div>
+          <div class="lc-desc">1 unit, non-operating</div>
+        </div>
+      </button>
+      <button class="layout-card" data-layout="slider">
+        <svg viewBox="0 0 60 50"><rect x="4" y="4" width="52" height="42" fill="none" stroke="#0b0b0c" stroke-width="1.5"/><line x1="30" y1="4" x2="30" y2="46" stroke="#0b0b0c" stroke-width="1"/><path d="M18 20 L14 25 L18 30 M42 20 L46 25 L42 30" fill="none" stroke="#0b0b0c" stroke-width="0.75"/></svg>
+        <div>
+          <div class="lc-name">Horizontal Slider</div>
+          <div class="lc-desc">2-track slider unit</div>
+        </div>
+      </button>
+      <button class="layout-card" data-layout="awning">
+        <svg viewBox="0 0 60 50"><rect x="4" y="4" width="52" height="42" fill="none" stroke="#0b0b0c" stroke-width="1.5"/><path d="M4 46 L30 25 L56 46" fill="none" stroke="#0b0b0c" stroke-width="0.75"/></svg>
+        <div>
+          <div class="lc-name">Awning</div>
+          <div class="lc-desc">1 unit, top-hinged</div>
+        </div>
+      </button>
+    </div>
+  </div>
+
+  <div class="cfg-canvas">
+    <svg id="cfgSvg" viewBox="0 0 800 560" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+
+  <div class="totals-row" id="totalsRow"></div>
+
+  <div class="unit-summary" id="unitSummary"></div>
+
+  <div class="cfg-actions">
+    <button class="cfg-btn primary" id="printBtn">Print / save as PDF</button>
+    <button class="cfg-btn" id="downloadBtn">Download SVG sketch</button>
+  </div>
+
+  <div class="legend" style="margin-top:32px;">
+    <h2>How Sizes Are Calculated</h2>
+    <p><b>Perimeter shim:</b> 3/8" gap on each side deducted from the total opening before allocating to units.</p>
+    <p><b>Mullion:</b> 1-1/4" default structural mullion width. Adjustable input above. This is deducted from the total unit width when 2+ units share a mullion.</p>
+    <p><b>Rounding:</b> Individual unit widths are rounded down to the nearest 1/8" for practical ordering. Any remainder is absorbed into the shim gap.</p>
+  </div>
+
+  <div class="legend">
+    <h2>Field Notes</h2>
+    <p><b>DP considerations:</b> Larger single fixed windows need higher design pressure. Splitting one large opening into two mulled units often reduces the DP requirement per unit — but the mullion itself must be engineered for the combined load.</p>
+    <p><b>Egress:</b> If any unit in the configuration is intended for a sleeping room, that specific unit's clear opening must meet FBC/IRC R310 minimums. Cross-check with the Egress Opening Calculator.</p>
+    <p><b>HVHZ:</b> Mullion type and anchor spacing shown on the NOA must be followed exactly — no substitutions between manufacturers.</p>
+  </div>
+</div>
+
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var state = {layout:'single'};
+  var SHIM = 3/8;
+
+  function toFraction(inches){
+    var whole = Math.floor(inches);
+    var frac = inches - whole;
+    var sixteenths = Math.round(frac * 16);
+    if (sixteenths === 16) return (whole + 1) + '"';
+    if (sixteenths === 0) return whole + '"';
+    var num = sixteenths, den = 16;
+    while (num % 2 === 0 && den % 2 === 0){ num /= 2; den /= 2; }
+    return (whole > 0 ? whole + '-' : '') + num + '/' + den + '"';
+  }
+
+  function floorEighth(x){ return Math.floor(x * 8) / 8; }
+
+  var layouts = {
+    'single':   {name:'Single Hung',       tag:'SH',  operable:true,  op:'bottom sash operable'},
+    'double':   {name:'Double Hung',       tag:'DH',  operable:true,  op:'both sashes operable'},
+    'casement': {name:'Casement',          tag:'CA',  operable:true,  op:'side-hinged, egress-friendly'},
+    'fixed':    {name:'Fixed Picture',     tag:'FX',  operable:false, op:'non-operating'},
+    'slider':   {name:'Horizontal Slider', tag:'HR',  operable:true,  op:'2-track slider'},
+    'awning':   {name:'Awning',            tag:'AW',  operable:true,  op:'top-hinged, weather-resistant'}
+  };
+
+  function computeUnits(totalW, totalH){
+    // Deduct shim gap perimeter to get usable envelope
+    var usableW = totalW - 2 * SHIM;
+    var usableH = totalH - 2 * SHIM;
+    var unitW = floorEighth(usableW);
+    var unitH = floorEighth(usableH);
+    return [{
+      key: state.layout,
+      layout: layouts[state.layout],
+      w: unitW,
+      h: unitH,
+      x: 0,
+      y: 0
+    }];
+  }
+
+  function drawUnit(x, y, w, h, unit, scale){
+    var px = x * scale, py = y * scale, pw = w * scale, ph = h * scale;
+    var lay = unit.layout;
+    var g = '<g>';
+    g += '<rect x="' + px + '" y="' + py + '" width="' + pw + '" height="' + ph + '" fill="#ffffff" stroke="#0b0b0c" stroke-width="1.5"/>';
+    // Frame inset for glass
+    var inset = 6;
+    g += '<rect x="' + (px+inset) + '" y="' + (py+inset) + '" width="' + (pw-2*inset) + '" height="' + (ph-2*inset) + '" fill="#f8fafc" stroke="#cbd5e1" stroke-width="0.5"/>';
+
+    // Layout-specific detail lines
+    if (state.layout === 'single'){
+      var midY = py + ph/2;
+      g += '<line x1="' + (px+inset) + '" y1="' + midY + '" x2="' + (px+pw-inset) + '" y2="' + midY + '" stroke="#475569" stroke-width="1"/>';
+      // Operable arrow (bottom sash slides up)
+      g += '<path d="M' + (px+pw/2) + ' ' + (py+ph-inset-8) + ' l0 -14 m-5 5 l5 -5 l5 5" fill="none" stroke="#2563eb" stroke-width="1"/>';
+      g += '<text x="' + (px+pw/2) + '" y="' + (py+ph-4) + '" text-anchor="middle" font-family="Satoshi,sans-serif" font-size="10" fill="#475569">op</text>';
+    } else if (state.layout === 'double'){
+      var midY2 = py + ph/2;
+      g += '<line x1="' + (px+inset) + '" y1="' + midY2 + '" x2="' + (px+pw-inset) + '" y2="' + midY2 + '" stroke="#475569" stroke-width="1.5"/>';
+      g += '<path d="M' + (px+pw/2) + ' ' + (py+ph*0.75) + ' l0 -12 m-4 4 l4 -4 l4 4 M' + (px+pw/2) + ' ' + (py+ph*0.25) + ' l0 12 m-4 -4 l4 4 l4 -4" fill="none" stroke="#2563eb" stroke-width="1"/>';
+    } else if (state.layout === 'casement'){
+      var cx = px + pw/2, cy = py + ph/2;
+      g += '<path d="M' + (px+inset) + ' ' + cy + ' L' + (px+pw-inset) + ' ' + (py+inset) + ' M' + (px+inset) + ' ' + cy + ' L' + (px+pw-inset) + ' ' + (py+ph-inset) + '" fill="none" stroke="#475569" stroke-width="0.75"/>';
+    } else if (state.layout === 'fixed'){
+      g += '<text x="' + (px+pw/2) + '" y="' + (py+ph/2+4) + '" text-anchor="middle" font-family="General Sans,sans-serif" font-size="14" font-weight="600" fill="#475569">FIXED</text>';
+    } else if (state.layout === 'slider'){
+      var cxs = px + pw/2;
+      g += '<line x1="' + cxs + '" y1="' + (py+inset) + '" x2="' + cxs + '" y2="' + (py+ph-inset) + '" stroke="#475569" stroke-width="1.5"/>';
+      g += '<path d="M' + (cxs-20) + ' ' + (py+ph/2-6) + ' l-6 6 l6 6 M' + (cxs+20) + ' ' + (py+ph/2-6) + ' l6 6 l-6 6" fill="none" stroke="#2563eb" stroke-width="1"/>';
+    } else if (state.layout === 'awning'){
+      g += '<path d="M' + (px+inset) + ' ' + (py+ph-inset) + ' L' + (px+pw/2) + ' ' + (py+inset+6) + ' L' + (px+pw-inset) + ' ' + (py+ph-inset) + '" fill="none" stroke="#475569" stroke-width="0.75"/>';
+    }
+
+    // Center label
+    g += '<text x="' + (px+pw/2) + '" y="' + (py + 22) + '" text-anchor="middle" font-family="General Sans,sans-serif" font-size="13" font-weight="700" fill="#2563eb">' + lay.tag + '</text>';
+    g += '<text x="' + (px+pw/2) + '" y="' + (py+ph/2 + (state.layout === 'fixed' ? 20 : 0)) + '" text-anchor="middle" font-family="Satoshi,sans-serif" font-size="11" fill="#475569">' + toFraction(unit.w) + ' × ' + toFraction(unit.h) + '</text>';
+    g += '</g>';
+    return g;
+  }
+
+  function drawDimLine(x1, y1, x2, y2, label, side){
+    var g = '<g>';
+    var tick = 5;
+    g += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="#2563eb" stroke-width="1.25"/>';
+    if (side === 'top' || side === 'bottom'){
+      g += '<line x1="' + x1 + '" y1="' + (y1-tick) + '" x2="' + x1 + '" y2="' + (y1+tick) + '" stroke="#2563eb" stroke-width="1.25"/>';
+      g += '<line x1="' + x2 + '" y1="' + (y2-tick) + '" x2="' + x2 + '" y2="' + (y2+tick) + '" stroke="#2563eb" stroke-width="1.25"/>';
+      g += '<text x="' + ((x1+x2)/2) + '" y="' + (y1 + (side==='top'?-8:16)) + '" text-anchor="middle" font-family="General Sans,sans-serif" font-size="13" font-weight="600" fill="#2563eb">' + label + '</text>';
+    } else {
+      g += '<line x1="' + (x1-tick) + '" y1="' + y1 + '" x2="' + (x1+tick) + '" y2="' + y1 + '" stroke="#2563eb" stroke-width="1.25"/>';
+      g += '<line x1="' + (x2-tick) + '" y1="' + y2 + '" x2="' + (x2+tick) + '" y2="' + y2 + '" stroke="#2563eb" stroke-width="1.25"/>';
+      g += '<text x="' + (x1 + (side==='left'?-10:14)) + '" y="' + ((y1+y2)/2 + 4) + '" text-anchor="' + (side==='left'?'end':'start') + '" font-family="General Sans,sans-serif" font-size="13" font-weight="600" fill="#2563eb">' + label + '</text>';
+    }
+    g += '</g>';
+    return g;
+  }
+
+  function render(){
+    var totalW = parseFloat($('totalW').value) || 0;
+    var totalH = parseFloat($('totalH').value) || 0;
+    var units = computeUnits(totalW, totalH);
+
+    // Compute scale to fit inside viewBox 800x560, leaving margin for dims
+    var canvasW = 620, canvasH = 400;
+    var scale = Math.min(canvasW / totalW, canvasH / totalH);
+    var scaledW = totalW * scale;
+    var scaledH = totalH * scale;
+    var offsetX = (800 - scaledW) / 2;
+    var offsetY = 80;
+
+    var svg = '';
+    // Outer rough/masonry opening outline (dashed)
+    svg += '<g transform="translate(' + offsetX + ',' + offsetY + ')">';
+    svg += '<rect x="0" y="0" width="' + scaledW + '" height="' + scaledH + '" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5" stroke-dasharray="6 3"/>';
+
+    // Draw units inside, offset by shim
+    var shimPx = SHIM * scale;
+    units.forEach(function(u){
+      svg += drawUnit(shimPx + u.x * scale, shimPx + u.y * scale, u.w, u.h, u, scale);
+    });
+    svg += '</g>';
+
+    // Dimension lines outside the frame
+    svg += drawDimLine(offsetX, offsetY - 34, offsetX + scaledW, offsetY - 34, toFraction(totalW) + ' (opening)', 'top');
+    svg += drawDimLine(offsetX + scaledW + 34, offsetY, offsetX + scaledW + 34, offsetY + scaledH, toFraction(totalH), 'right');
+
+    // Bottom label: unit dims
+    var totalUnitsWidth = units.reduce(function(sum, u){ return sum + u.w; }, 0);
+    svg += '<text x="400" y="' + (offsetY + scaledH + 32) + '" text-anchor="middle" font-family="Satoshi,sans-serif" font-size="12" fill="#475569">' + units.length + ' unit' + (units.length===1?'':'s') + ' · Total unit width: ' + toFraction(totalUnitsWidth) + '</text>';
+
+    // Title block bottom-left
+    svg += '<g transform="translate(20,510)">';
+    svg += '<text x="0" y="0" font-family="General Sans,sans-serif" font-size="11" font-weight="600" fill="#0b0b0c">' + units.map(function(u){ return u.layout.name; }).join(' + ') + '</text>';
+    svg += '<text x="0" y="16" font-family="Satoshi,sans-serif" font-size="10" fill="#64748b">Total opening: ' + toFraction(totalW) + ' × ' + toFraction(totalH) + ' · Wall: ' + $('wallCfg').options[$('wallCfg').selectedIndex].text + '</text>';
+    svg += '<text x="0" y="32" font-family="Satoshi,sans-serif" font-size="10" fill="#64748b">Shim: 3/8" perimeter · Generated on permittoolkit.com</text>';
+    svg += '</g>';
+
+    $('cfgSvg').innerHTML = svg;
+
+    // Totals row
+    var operableCount = units.filter(function(u){ return u.layout.operable; }).length;
+    $('totalsRow').innerHTML =
+      '<div class="totals-stat"><div class="ts-label">Total Opening</div><div class="ts-value">' + toFraction(totalW) + ' × ' + toFraction(totalH) + '</div></div>' +
+      '<div class="totals-stat"><div class="ts-label">Units</div><div class="ts-value">' + units.length + '</div></div>' +
+      '<div class="totals-stat"><div class="ts-label">Operable</div><div class="ts-value">' + operableCount + '</div></div>' +
+      '<div class="totals-stat"><div class="ts-label">Shim per Side</div><div class="ts-value">3/8"</div></div>';
+
+    // Unit summary cards
+    $('unitSummary').innerHTML = units.map(function(u, i){
+      return '<div class="unit-card">'
+        + '<span class="uc-tag">Unit ' + (i+1) + ' · ' + u.layout.tag + '</span>'
+        + '<div class="uc-name">' + u.layout.name + '</div>'
+        + '<div class="uc-dim">' + toFraction(u.w) + ' × ' + toFraction(u.h) + '</div>'
+        + '<div class="uc-hint">' + u.layout.op + '</div>'
+        + '</div>';
+    }).join('');
+  }
+
+  document.getElementById('layoutGrid').addEventListener('click', function(e){
+    var btn = e.target.closest('.layout-card');
+    if (!btn) return;
+    state.layout = btn.dataset.layout;
+    document.querySelectorAll('.layout-card').forEach(function(b){ b.classList.toggle('active', b === btn); });
+    render();
+  });
+
+  ['totalW','totalH','wallCfg','mullionW'].forEach(function(id){
+    $(id).addEventListener('input', render);
+    $(id).addEventListener('change', render);
+  });
+
+  $('printBtn').addEventListener('click', function(){ window.print(); });
+  $('downloadBtn').addEventListener('click', function(){
+    var svgEl = $('cfgSvg');
+    var svgData = '<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 560" width="800" height="560">' + svgEl.innerHTML + '</svg>';
+    var blob = new Blob([svgData], {type:'image/svg+xml'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = 'window-config.svg'; a.click();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 500);
+  });
+
+  render();
+})();
+</script>
+<script src="./assets/site.js"></script>
+</body>
+</html>
