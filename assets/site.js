@@ -5,8 +5,9 @@
 
   // Supabase RPC — uses a security-definer function to capture leads.
   // The function bypasses RLS quirks and silently deduplicates by lowercased email.
-  var SUPA_URL = 'https://gkckgzruadshnblxtxiq.supabase.co';
-  var SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrY2tnenJ1YWRzaG5ibHh0eGlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0MDU3NTIsImV4cCI6MjEwMjk4MTc1Mn0.xNEkA5pckTyWFW5XIJGcnQAVxkwBqLfKTCV8WCcQOg0';
+  // Points at PermitAIO-v2 (tibyupxfosgnyrohruof) — the live, active project.
+  var SUPA_URL = 'https://tibyupxfosgnyrohruof.supabase.co';
+  var SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpYnl1cHhmb3Nnbnlyb2hydW9mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0MTE4ODIsImV4cCI6MjEwMjk4Nzg4Mn0.QnqVabwVJE5qrHhyL_6YLylAjZY35sdIWS6PcvLsNwg';
   var CAPTURE_RPC = 'capture_permit_toolkit_lead';
   var LS_KEY = 'pt_lead_captured_v1';
   var COOKIE_KEY = 'pt_lead_v1';
