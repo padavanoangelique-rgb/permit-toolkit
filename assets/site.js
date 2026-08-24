@@ -64,7 +64,45 @@
     });
   }
 
-  // --- Header ---
+  // --- Header (with Tools dropdown) ---
+  // Categorized list of every tool on the site — kept here so every page picks it up.
+  var NAV_TOOLS = [
+    { group: 'Windows & Doors', items: [
+      { href: '/noa-lookup.html',              label: 'NOA / FL Product Approval Lookup' },
+      { href: '/rough-opening-calculator.html',label: 'Rough Opening Calculator' },
+      { href: '/design-pressure-calculator.html', label: 'Design Pressure Estimator' },
+      { href: '/energy-code-check.html',       label: 'Energy Code Check (U & SHGC)' },
+      { href: '/egress-calculator.html',       label: 'Egress Opening Calculator' }
+    ]},
+    { group: 'Enclosures & Pools', items: [
+      { href: '/patio-enclosure-permit-guide.html', label: 'Sunroom Category Guide' },
+      { href: '/pool-safety-barrier-checklist.html',label: 'Pool Safety Barrier Checklist' }
+    ]},
+    { group: 'Any Trade', items: [
+      { href: '/noc-threshold-checker.html',   label: 'NOC Threshold Checker' },
+      { href: '/permit-fee-estimator.html',    label: 'Permit Fee Estimator' },
+      { href: '/electrical-load-calculator.html', label: 'Electrical Service Load' },
+      { href: '/property-appraisers.html',     label: 'Property Appraisers' }
+    ]}
+  ];
+
+  function buildToolsMenuHtml(){
+    var currentPath = (location.pathname || '').replace(/\/$/, '') || '/index.html';
+    var html = '';
+    for (var i = 0; i < NAV_TOOLS.length; i++){
+      var g = NAV_TOOLS[i];
+      html += '<div class="pt-tools-group">';
+      html += '<div class="pt-tools-group-label">' + g.group + '</div>';
+      for (var j = 0; j < g.items.length; j++){
+        var it = g.items[j];
+        var active = (it.href === currentPath) ? ' aria-current="page"' : '';
+        html += '<a class="pt-tools-item" href="' + it.href + '"' + active + '>' + it.label + '</a>';
+      }
+      html += '</div>';
+    }
+    return html;
+  }
+
   var header = el(
     '<header class="site-header">' +
       '<div class="inner">' +
@@ -75,13 +113,44 @@
             '<div class="brand-tag">Free Contractor Tools</div>' +
           '</div>' +
         '</a>' +
-        '<a class="header-cta" href="' + AIO_URL + '" target="_blank" rel="noopener">' +
-          'Try PermitAIO <span class="arrow">→</span>' +
-        '</a>' +
+        '<div class="header-right">' +
+          '<div class="pt-tools-nav" id="ptToolsNav">' +
+            '<button type="button" class="pt-tools-btn" id="ptToolsBtn" aria-haspopup="true" aria-expanded="false" aria-controls="ptToolsMenu">' +
+              'Tools <span class="pt-tools-caret" aria-hidden="true">▾</span>' +
+            '</button>' +
+            '<div class="pt-tools-menu" id="ptToolsMenu" role="menu" hidden>' +
+              buildToolsMenuHtml() +
+            '</div>' +
+          '</div>' +
+          '<a class="header-cta" href="' + AIO_URL + '" target="_blank" rel="noopener">' +
+            'Try PermitAIO <span class="arrow">→</span>' +
+          '</a>' +
+        '</div>' +
       '</div>' +
     '</header>'
   );
   document.body.insertBefore(header, document.body.firstChild);
+
+  // Tools dropdown: click to toggle, click-outside/Escape to close.
+  (function(){
+    var btn  = document.getElementById('ptToolsBtn');
+    var menu = document.getElementById('ptToolsMenu');
+    var nav  = document.getElementById('ptToolsNav');
+    if (!btn || !menu || !nav) return;
+    function open(){ menu.hidden = false; btn.setAttribute('aria-expanded','true');  nav.classList.add('open'); }
+    function close(){ menu.hidden = true;  btn.setAttribute('aria-expanded','false'); nav.classList.remove('open'); }
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      if (menu.hidden) open(); else close();
+    });
+    document.addEventListener('click', function(e){
+      if (menu.hidden) return;
+      if (!nav.contains(e.target)) close();
+    });
+    document.addEventListener('keydown', function(e){
+      if (e.key === 'Escape' && !menu.hidden) close();
+    });
+  })();
 
   // --- Interior compact promo bar ---
   var pageType = document.body.getAttribute('data-page-type');
