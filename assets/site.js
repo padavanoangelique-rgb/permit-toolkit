@@ -9,6 +9,8 @@
   var SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrY2tnenJ1YWRzaG5ibHh0eGlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0MDU3NTIsImV4cCI6MjEwMjk4MTc1Mn0.xNEkA5pckTyWFW5XIJGcnQAVxkwBqLfKTCV8WCcQOg0';
   var CAPTURE_RPC = 'capture_permit_toolkit_lead';
   var LS_KEY = 'pt_lead_captured_v1';
+  var COOKIE_KEY = 'pt_lead_v1';
+  var COOKIE_DAYS = 3650; // ~10 years
 
   function el(html){
     var d = document.createElement('div');
@@ -16,11 +18,30 @@
     return d.firstChild;
   }
 
+  function readCookie(name){
+    try {
+      var parts = ('; ' + document.cookie).split('; ' + name + '=');
+      if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
+    } catch(e){}
+    return '';
+  }
+  function writeCookie(name, value, days){
+    try {
+      var d = new Date();
+      d.setTime(d.getTime() + days*24*60*60*1000);
+      // Domain-less cookie so it works on preview + prod. SameSite=Lax so top-level nav sends it.
+      document.cookie = name + '=' + encodeURIComponent(value) + '; expires=' + d.toUTCString() + '; path=/; SameSite=Lax';
+    } catch(e){}
+  }
   function isCaptured(){
-    try { return !!localStorage.getItem(LS_KEY); } catch(e){ return false; }
+    try { if (localStorage.getItem(LS_KEY)) return true; } catch(e){}
+    if (readCookie(COOKIE_KEY)) return true;
+    return false;
   }
   function markCaptured(email){
-    try { localStorage.setItem(LS_KEY, JSON.stringify({email:email, at:new Date().toISOString()})); } catch(e){}
+    var payload = JSON.stringify({email:email, at:new Date().toISOString()});
+    try { localStorage.setItem(LS_KEY, payload); } catch(e){}
+    writeCookie(COOKIE_KEY, '1', COOKIE_DAYS);
   }
 
   function postLead(payload){
@@ -152,9 +173,12 @@
   }
 
   // ========================================================================
-  //  EMAIL GATE — one-time, remembered forever via localStorage.
-  //  Skips on the homepage (index.html / "/") so people can browse tool cards.
-  //  Blocks every interior tool page until email is submitted.
+  //  EMAIL GATE — one email, one time, remembered forever.
+  //  Homepage: tool grid is hidden behind a "Browse tools" wall until
+  //            they submit their email. Hero + PermitAIO promo stay visible.
+  //  Tool pages: skip the gate entirely if already captured; otherwise
+  //              redirect back to the homepage where the wall lives.
+  //  Persistence: localStorage + 10-year cookie — either signal unlocks.
   // ========================================================================
   function isHomepage(){
     var p = location.pathname.replace(/\/$/,'');
@@ -166,8 +190,8 @@
       '<div class="pt-gate" role="dialog" aria-modal="true" aria-labelledby="pt-gate-title">' +
         '<div class="pt-gate-card">' +
           '<div class="pt-gate-badge">FREE FOREVER</div>' +
-          '<h2 id="pt-gate-title">Enter your email to use the free tools</h2>' +
-          '<p class="pt-gate-sub">One email, unlimited access to all 13 calculators — forever. No login, no password. Built by the team behind <b>PermitAIO</b>.</p>' +
+          '<h2 id="pt-gate-title">Enter email to use free tools</h2>' +
+          '<p class="pt-gate-sub">One email unlocks all 11 tools — forever. No login, no password. Built by the team behind <b>PermitAIO</b>.</p>' +
           '<form class="pt-gate-form" id="ptGateForm" novalidate>' +
             '<label class="pt-gate-label">Email <span aria-hidden="true">*</span>' +
               '<input type="email" name="email" required autocomplete="email" placeholder="you@company.com" />' +
@@ -193,6 +217,15 @@
       '</div>'
     );
     return overlay;
+  }
+
+  // Called after successful capture — reveals the homepage tool grid if we're
+  // on the homepage, so the user sees the tools appear behind them.
+  function revealHomepageGrid(){
+    var wall = document.getElementById('ptHomeWall');
+    var grid = document.getElementById('tools');
+    if (wall) wall.remove();
+    if (grid) grid.classList.remove('pt-locked');
   }
 
   function showGate(){
@@ -239,6 +272,7 @@
           setTimeout(function(){
             document.documentElement.classList.remove('pt-gate-open');
             gate.remove();
+            revealHomepageGrid();
           }, 250);
         } else {
           errEl.textContent = 'Something went wrong. Please try again.';
@@ -251,6 +285,7 @@
         markCaptured(email);
         document.documentElement.classList.remove('pt-gate-open');
         gate.remove();
+        revealHomepageGrid();
       });
     });
 
@@ -261,10 +296,45 @@
     }, 60);
   }
 
-  // Trigger the gate on every non-homepage page unless already captured.
-  if (!isCaptured() && !isHomepage()) {
-    // Slight delay so the page renders first (better perceived value + SEO)
-    if (document.readyState === 'complete') showGate();
-    else window.addEventListener('load', function(){ setTimeout(showGate, 150); });
+  // Build the homepage "Browse tools" wall that hides the tool grid until
+  // the user submits their email. Anchored just above the grid.
+  function installHomepageWall(){
+    var grid = document.getElementById('tools');
+    if (!grid) return;
+    grid.classList.add('pt-locked');
+    var wall = el(
+      '<div id="ptHomeWall" class="pt-home-wall">' +
+        '<div class="pt-home-wall-inner">' +
+          '<div class="pt-home-wall-badge">FREE FOREVER</div>' +
+          '<h2>Browse the free tools</h2>' +
+          '<p>11 field-ready tools for permit prep. One email unlocks the whole site — forever, no login, no password.</p>' +
+          '<button type="button" class="pt-home-wall-btn" id="ptHomeWallBtn">Browse tools →</button>' +
+          '<div class="pt-home-wall-fine">Built by the team behind PermitAIO. We\'ll never sell your email.</div>' +
+        '</div>' +
+      '</div>'
+    );
+    grid.parentNode.insertBefore(wall, grid);
+    wall.querySelector('#ptHomeWallBtn').addEventListener('click', function(){
+      showGate();
+    });
   }
+
+  // Trigger logic:
+  // - Homepage + not captured: install the wall (grid hidden, button opens gate).
+  // - Homepage + captured: no gate, no wall — full grid visible.
+  // - Tool page + not captured: bounce back to homepage where the wall lives.
+  // - Tool page + captured: no gate, tool loads immediately.
+  function initGate(){
+    if (isCaptured()) return;
+    if (isHomepage()) {
+      installHomepageWall();
+    } else {
+      // Send them home so the wall can capture them there.
+      var current = location.pathname + location.search;
+      location.replace('/index.html?next=' + encodeURIComponent(current));
+    }
+  }
+
+  if (document.readyState === 'complete') initGate();
+  else window.addEventListener('load', function(){ setTimeout(initGate, 100); });
 })();

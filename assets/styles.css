@@ -699,3 +699,81 @@ html.pt-gate-open, html.pt-gate-open body { overflow: hidden; }
   .pt-gate-card h2 { font-size: 21px; }
   .pt-gate-sub { font-size: 13.5px; }
 }
+
+/* --- Homepage "Browse tools" wall (shown until email captured) ------- */
+.tools.pt-locked { display: none; }
+
+.pt-home-wall {
+  max-width: 720px;
+  margin: 0 auto 48px;
+  padding: 0 20px;
+}
+.pt-home-wall-inner {
+  background: #fff;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 20px;
+  padding: 44px 40px 40px;
+  text-align: center;
+  box-shadow: 0 20px 48px rgba(15,23,42,0.08), 0 4px 12px rgba(15,23,42,0.04);
+  animation: ptWallIn 0.35s ease-out;
+}
+@keyframes ptWallIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.pt-home-wall-badge {
+  display: inline-block;
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  border-radius: 999px;
+  margin-bottom: 18px;
+}
+.pt-home-wall h2 {
+  font-family: 'General Sans', system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 30px;
+  line-height: 1.15;
+  color: var(--ink, #0f172a);
+  margin: 0 0 12px;
+  letter-spacing: -0.01em;
+}
+.pt-home-wall p {
+  color: var(--muted, #475569);
+  font-size: 16px;
+  line-height: 1.55;
+  margin: 0 auto 24px;
+  max-width: 520px;
+}
+.pt-home-wall-btn {
+  display: inline-block;
+  background: var(--primary, #2563eb);
+  color: #fff;
+  border: 0;
+  border-radius: 12px;
+  padding: 14px 28px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--primary) 25%, transparent);
+  transition: background 0.15s ease, transform 0.06s ease, box-shadow 0.15s ease;
+}
+.pt-home-wall-btn:hover { background: var(--primary-hover, #1d4ed8); }
+.pt-home-wall-btn:active { transform: translateY(1px); }
+.pt-home-wall-fine {
+  color: var(--muted, #64748b);
+  font-size: 13px;
+  margin-top: 18px;
+}
+
+@media (max-width: 720px) {
+  .pt-home-wall-inner { padding: 32px 24px 28px; border-radius: 16px; }
+  .pt-home-wall h2 { font-size: 24px; }
+  .pt-home-wall p { font-size: 15px; }
+  .pt-home-wall-btn { width: 100%; padding: 14px 20px; }
+}
