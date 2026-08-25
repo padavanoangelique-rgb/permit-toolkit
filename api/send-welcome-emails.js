@@ -1,12 +1,17 @@
 // Sends a one-time welcome email to any Permit Toolkit lead that hasn't
-// received one yet. Triggered on a schedule (see project docs) with a
-// shared-secret header — not intended to be called by the browser.
+// received one yet. Triggered hourly by Vercel Cron (see vercel.json) —
+// not intended to be called by the browser.
 //
 // Env vars required on this Vercel project:
 //   SUPABASE_URL               - PermitAIO-v2 project URL
 //   SUPABASE_SERVICE_ROLE_KEY  - service role key for that project
 //   RESEND_API_KEY             - shared Resend key (same one PermitAIO uses)
-//   CRON_SECRET                - shared secret checked against x-cron-secret header
+//   CRON_SECRET                - shared secret. Vercel Cron automatically
+//                                 sends this as `Authorization: Bearer
+//                                 <CRON_SECRET>` on scheduled invocations —
+//                                 that's the primary check below. The legacy
+//                                 `x-cron-secret` header is still accepted
+//                                 too, so a manual curl test still works.
 
 const BATCH_LIMIT = 25;
 const FROM = 'Permit Toolkit <hello@permitaio.com>';
@@ -50,8 +55,11 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ ok: false, error: 'method_not_allowed' });
   }
 
-  const secret = req.headers['x-cron-secret'];
-  if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
+  const authHeader = req.headers['authorization'] || '';
+  const bearerSecret = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const legacySecret = req.headers['x-cron-secret'];
+  const providedSecret = bearerSecret || legacySecret;
+  if (!process.env.CRON_SECRET || providedSecret !== process.env.CRON_SECRET) {
     return res.status(401).json({ ok: false, error: 'unauthorized' });
   }
 

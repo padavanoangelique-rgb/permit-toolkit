@@ -2,6 +2,9 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": false,
   "trailingSlash": false,
+  "crons": [
+    { "path": "/api/send-welcome-emails", "schedule": "0 * * * *" }
+  ],
   "redirects": [
     { "source": "/pool-safety-barrier-checklist.html", "destination": "/", "statusCode": 301 },
     { "source": "/pool-safety-barrier-checklist",      "destination": "/", "statusCode": 301 },
