@@ -395,6 +395,8 @@
   var drag = null;
   var pdfUrl = null;
   var unitMode = "ft";
+  var past = [];
+  var MAX_UNDO = 60;
   try {
     var saved = localStorage.getItem("pt_ww_unit_mode");
     if (saved === "in" || saved === "ft") unitMode = saved;
@@ -404,8 +406,31 @@
     return document.getElementById(id);
   };
 
+  function cloneSnap() {
+    return {
+      state: JSON.parse(JSON.stringify(state)),
+      selection: selection
+        ? { kind: selection.kind, path: selection.path.slice() }
+        : null,
+    };
+  }
+  function pushHistory() {
+    past.push(cloneSnap());
+    if (past.length > MAX_UNDO) past.shift();
+  }
+  function undo() {
+    if (!past.length) return;
+    var snap = past.pop();
+    state = snap.state;
+    selection = snap.selection;
+    render();
+  }
+
   function dispatch(action) {
-    state = reduce(state, action);
+    var next = reduce(state, action);
+    if (next === state) return;
+    pushHistory();
+    state = next;
     render();
   }
 
@@ -489,6 +514,7 @@
       stockPicker(sm ? "Selected mullion" : "Mullion stock", (sm ? sm.stock : state.mullionStock).id, "m:") +
       stockPicker("Buck stock", state.buckStock.id, "b:") +
       toolBtn("Delete", "delete", !selection, "danger") +
+      toolBtn("Undo", "undo", past.length === 0) +
       toolBtn("Reset layout", "reset") +
       toolBtn("Print / save PDF", "pdf");
 
@@ -586,6 +612,9 @@
       '<button type="button" data-act="delete"' +
       (selection ? "" : " disabled") +
       ">✕<span>Delete</span></button>" +
+      '<button type="button" data-act="undo"' +
+      (past.length ? "" : " disabled") +
+      ">↩<span>Undo</span></button>" +
       '<button type="button" data-act="reset">↺<span>Reset</span></button>' +
       '<button type="button" data-act="pdf">⇩<span>PDF</span></button>';
 
@@ -643,8 +672,10 @@
         else dispatch({ type: "deleteMullion", path: selection.path });
         selection = null;
         render();
+      } else if (act === "undo") {
+        undo();
       } else if (act === "reset") {
-        state = initialState();
+        dispatch({ type: "reset" });
         selection = null;
         $("openW").value = formatDim(120);
         $("openH").value = formatDim(120);
@@ -1101,6 +1132,7 @@
       if (samePath(flat.mullions[i].path, splitPath)) mull = flat.mullions[i];
     if (!mull) return;
     drag = { splitPath: splitPath, edge: edge, geom: geom, mull: mull };
+    pushHistory();
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
     } catch (err) {}
@@ -1172,6 +1204,11 @@
   window.addEventListener("keydown", function (e) {
     var tag = (e.target && e.target.tagName) || "";
     if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+    if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z") && !e.shiftKey) {
+      e.preventDefault();
+      undo();
+      return;
+    }
     if (e.key === "Escape") {
       selection = null;
       render();
