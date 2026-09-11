@@ -949,13 +949,14 @@
         })
       );
       sash(gEl, u.label, x + inset, y + inset, Math.max(0, w - inset * 2), Math.max(0, h - inset * 2));
-      if (w > 36 && h > 28) {
+      var idLabel = "U" + u.index + "  " + (w > 90 ? labelName(u.label) : labelShort(u.label)).toUpperCase();
+      if (w > 28 && h > 16) {
         gEl.appendChild(
           el(
             "text",
             {
               x: x + w / 2,
-              y: y + h / 2 + 4,
+              y: y + h / 2 + (h < 44 ? 10 : 4),
               "text-anchor": "middle",
               fill: "#2563eb",
               "font-size": h > 64 ? "10" : "9",
@@ -964,15 +965,30 @@
               "letter-spacing": "0.8",
               style: "pointer-events:none",
             },
-            "U" + u.index + "  " + (w > 90 ? labelName(u.label) : labelShort(u.label)).toUpperCase()
+            idLabel
           )
         );
       }
-      if (w > 52) {
+      if (h >= 56 && w >= 48) {
         unitHDim(gEl, x, y + 12, w, formatDraw(u.w));
-      }
-      if (h > 52) {
         unitVDim(gEl, x + 12, y, h, formatDraw(u.h));
+      } else if (w > 36) {
+        gEl.appendChild(
+          el(
+            "text",
+            {
+              x: x + w / 2,
+              y: y + Math.min(14, h * 0.42),
+              "text-anchor": "middle",
+              fill: "#1d4ed8",
+              "font-size": "11",
+              "font-weight": "700",
+              "font-family": "General Sans, sans-serif",
+              style: "pointer-events:none",
+            },
+            formatDraw(u.w) + "  ×  " + formatDraw(u.h)
+          )
+        );
       }
       gEl.addEventListener("pointerdown", function (e) {
         e.stopPropagation();
@@ -1076,24 +1092,50 @@
       );
       var mLabel = "M" + m.index + "  " + m.stock.nominal + "  " + formatIn(m.stock.tIn);
       var along = m.axis === "v" ? h : w;
-      if (along > 48) {
-        var tx = m.axis === "v" ? x + w / 2 : x + w / 2;
-        var ty = m.axis === "v" ? y + h / 2 : y + h / 2 + 3;
-        var txt = el(
-          "text",
-          {
-            x: tx,
-            y: ty,
-            "text-anchor": "middle",
-            fill: "#fff",
-            "font-size": along > 90 ? "10" : "9",
-            "font-weight": "700",
-            "font-family": "General Sans, sans-serif",
-            style: "pointer-events:none",
-          },
-          mLabel
-        );
-        if (m.axis === "v") txt.setAttribute("transform", "rotate(-90 " + tx + " " + ty + ")");
+      if (along > 36) {
+        var txt;
+        if (m.axis === "v") {
+          var tx = x + w + 11;
+          var ty = y + h / 2;
+          txt = el(
+            "text",
+            {
+              x: tx,
+              y: ty,
+              "text-anchor": "middle",
+              fill: "#1d4ed8",
+              "font-size": "10",
+              "font-weight": "700",
+              "font-family": "General Sans, sans-serif",
+              stroke: "#fff",
+              "stroke-width": "3",
+              "paint-order": "stroke",
+              style: "pointer-events:none",
+              transform: "rotate(-90 " + tx + " " + ty + ")",
+            },
+            mLabel
+          );
+        } else {
+          var tx2 = x + w / 2;
+          var ty2 = y - 5;
+          txt = el(
+            "text",
+            {
+              x: tx2,
+              y: ty2,
+              "text-anchor": "middle",
+              fill: "#1d4ed8",
+              "font-size": "10",
+              "font-weight": "700",
+              "font-family": "General Sans, sans-serif",
+              stroke: "#fff",
+              "stroke-width": "3",
+              "paint-order": "stroke",
+              style: "pointer-events:none",
+            },
+            mLabel
+          );
+        }
         gEl.appendChild(txt);
       }
       gEl.addEventListener("pointerdown", function (e) {
@@ -1535,19 +1577,31 @@
         });
         pdfSash(u.label, ux + inset, uy + inset, uw - inset * 2, uh - inset * 2);
       }
-      if (uw > 28 && uh > 22) {
+      if (uw > 18 && uh > 10) {
         var t1 = "U" + u.index + "  " + labelShort(u.label);
-        var sz = uw > 70 ? 8 : 7;
+        var sz = uw > 70 && uh > 28 ? 8 : 6.5;
         var tw1 = bold.widthOfTextAtSize(winAnsi(t1), sz);
-        write(t1, ux + uw / 2 - tw1 / 2, yOf(uy + uh / 2 + 3), sz, bold, NAVY);
-        if (uw > 48) {
-          var dw = formatIn(u.w);
-          var tdw = font.widthOfTextAtSize(winAnsi(dw), 7);
-          write(dw, ux + uw / 2 - tdw / 2, yOf(uy + 11), 7, bold, GOLD);
-        }
-        if (uh > 48) {
-          var dh = formatIn(u.h);
-          write(dh, ux + 10, yOf(uy + uh / 2), 7, bold, GOLD);
+        var idY = uh < 28 ? uy + uh / 2 + 6 : uy + uh / 2 + 3;
+        write(t1, ux + uw / 2 - tw1 / 2, yOf(idY), sz, bold, NAVY);
+        var dw = formatIn(u.w);
+        var dh = formatIn(u.h);
+        if (uh >= 32) {
+          var tdw = bold.widthOfTextAtSize(winAnsi(dw), 7);
+          write(dw, ux + uw / 2 - tdw / 2, yOf(uy + 9), 7, bold, GOLD);
+          var hStr = dh;
+          var hw = bold.widthOfTextAtSize(winAnsi(hStr), 7);
+          page.drawText(winAnsi(hStr), {
+            x: ux + 8,
+            y: yOf(uy + uh / 2) - hw / 2,
+            size: 7,
+            font: bold,
+            color: GOLD,
+            rotate: degrees(90),
+          });
+        } else {
+          var pair = dw + "  x  " + dh;
+          var pw = bold.widthOfTextAtSize(winAnsi(pair), 7);
+          write(pair, ux + Math.max(4, uw / 2 - pw / 2), yOf(uy + Math.min(9, uh * 0.4)), 7, bold, GOLD);
         }
       }
     });
@@ -1558,21 +1612,24 @@
         mh = Math.max(m.h * scale, 1.2);
       rect(mx, my, mw, mh, { fill: rgb(0.12, 0.16, 0.23) });
       var along = m.axis === "v" ? mh : mw;
-      if (along > 36) {
-        var ml = "M" + m.index + " " + m.stock.nominal + " " + formatIn(m.stock.tIn);
-        var msz = 6;
+      if (along > 24) {
+        var ml = "M" + m.index + "  " + m.stock.nominal + "  " + formatIn(m.stock.tIn);
+        var msz = 7;
         var mlw = bold.widthOfTextAtSize(winAnsi(ml), msz);
         if (m.axis === "v") {
           page.drawText(winAnsi(ml), {
-            x: mx + mw / 2 + 2,
+            x: mx + mw + 9,
             y: yOf(my + mh / 2) - mlw / 2,
             size: msz,
             font: bold,
-            color: rgb(1, 1, 1),
+            color: NAVY,
             rotate: degrees(90),
           });
         } else {
-          write(ml, mx + mw / 2 - mlw / 2, yOf(my + mh / 2 + 2), msz, bold, rgb(1, 1, 1));
+          var lx = mx + Math.max(2, mw / 2 - mlw / 2);
+          var ly = my - 3;
+          rect(lx - 2, ly - 9, mlw + 4, 10, { fill: rgb(1, 1, 1) });
+          write(ml, lx, yOf(ly - 1), msz, bold, NAVY);
         }
       }
     });
