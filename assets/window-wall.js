@@ -72,7 +72,13 @@
   function formatPair(w, h) {
     return formatFtIn(w) + " x " + formatFtIn(h);
   }
-  function parseLength(raw) {
+  function formatDim(inches) {
+    return unitMode === "in" ? formatIn(inches) : formatFtIn(inches);
+  }
+  function formatPairDim(w, h) {
+    return formatDim(w) + " x " + formatDim(h);
+  }
+  function parseLength(raw, mode) {
     var s = String(raw || "")
       .trim()
       .toLowerCase()
@@ -117,7 +123,11 @@
       return Number(frac[1]) / den4;
     }
     var num = s.match(/^(\d+(?:\.\d+)?)$/);
-    if (num) return Number(num[1]) * 12;
+    if (num) {
+      var n = Number(num[1]);
+      if ((mode || unitMode) === "in") return n;
+      return n * 12;
+    }
     return null;
   }
 
@@ -384,6 +394,11 @@
   var selection = null;
   var drag = null;
   var pdfUrl = null;
+  var unitMode = "ft";
+  try {
+    var saved = localStorage.getItem("pt_ww_unit_mode");
+    if (saved === "in" || saved === "ft") unitMode = saved;
+  } catch (e) {}
 
   var $ = function (id) {
     return document.getElementById(id);
@@ -477,10 +492,15 @@
     var side =
       '<div class="ww-sec">Live sizes</div>' +
       "<dl>" +
-      row("Opening", formatPair(state.opening.wIn, state.opening.hIn)) +
+      row("Opening", formatPairDim(state.opening.wIn, state.opening.hIn)) +
       row("Bucks", state.buckStock.nominal + " " + formatIn(state.buckStock.tIn) + " x4") +
-      row("Pocket", formatIn(pocket.w) + " x " + formatIn(pocket.h)) +
-      row("Leftover", leftover > 0.05 ? formatIn(leftover) + "2 unassigned" : "Filled") +
+      row("Pocket", formatPairDim(pocket.w, pocket.h)) +
+      row(
+        "Leftover",
+        leftover > 0.05 && flat.gaps[0]
+          ? formatPairDim(flat.gaps[0].w, flat.gaps[0].h) + " unassigned"
+          : "Filled"
+      ) +
       "</dl>" +
       '<p class="ww-hint">Unit sizes = opening − bucks − mullions. The opening never changes.</p>' +
       '<div class="ww-sec">Selected</div>';
@@ -494,12 +514,12 @@
         "</div>" +
         '<div class="inputs-grid-2">' +
         '<div class="field"><label>W</label><input id="unitW" type="text" value="' +
-        esc(formatFtIn(su.w)) +
+        esc(formatDim(su.w)) +
         '"' +
         (canW ? "" : " disabled") +
         "></div>" +
         '<div class="field"><label>H</label><input id="unitH" type="text" value="' +
-        esc(formatFtIn(su.h)) +
+        esc(formatDim(su.h)) +
         '"' +
         (canHsz ? "" : " disabled") +
         "></div></div>" +
@@ -535,9 +555,9 @@
           " " +
           labelName(u.label) +
           "</span><span style='color:var(--muted)'>" +
-          formatIn(u.w) +
+          formatDim(u.w) +
           " x " +
-          formatIn(u.h) +
+          formatDim(u.h) +
           "</span></li>";
       });
       side += "</ul>";
@@ -568,9 +588,9 @@
         "<strong>U" +
         su.index +
         " · " +
-        formatIn(su.w) +
+        formatDim(su.w) +
         " x " +
-        formatIn(su.h) +
+        formatDim(su.h) +
         "</strong></div>" +
         typePicker(su.label);
     } else if (sm) {
@@ -618,8 +638,8 @@
       } else if (act === "reset") {
         state = initialState();
         selection = null;
-        $("openW").value = formatFtIn(120);
-        $("openH").value = formatFtIn(120);
+        $("openW").value = formatDim(120);
+        $("openH").value = formatDim(120);
         render();
       } else if (act === "pdf") {
         makePdf();
@@ -688,13 +708,13 @@
     var w = parseLength($("openW").value);
     var h = parseLength($("openH").value);
     if (w == null || h == null) {
-      $("openW").value = formatFtIn(state.opening.wIn);
-      $("openH").value = formatFtIn(state.opening.hIn);
+      $("openW").value = formatDim(state.opening.wIn);
+      $("openH").value = formatDim(state.opening.hIn);
       return;
     }
     dispatch({ type: "setOpening", wIn: w, hIn: h });
-    $("openW").value = formatFtIn(w);
-    $("openH").value = formatFtIn(h);
+    $("openW").value = formatDim(w);
+    $("openH").value = formatDim(h);
   }
   $("openW").addEventListener("blur", commitOpening);
   $("openH").addEventListener("blur", commitOpening);
@@ -703,6 +723,28 @@
       if (e.key === "Enter") e.target.blur();
     });
   });
+
+  function setUnitMode(next) {
+    unitMode = next === "in" ? "in" : "ft";
+    try {
+      localStorage.setItem("pt_ww_unit_mode", unitMode);
+    } catch (e) {}
+    var ft = $("modeFt");
+    var inn = $("modeIn");
+    if (ft) ft.className = unitMode === "ft" ? "on" : "";
+    if (inn) inn.className = unitMode === "in" ? "on" : "";
+    render();
+  }
+  $("modeFt").onclick = function () {
+    setUnitMode("ft");
+  };
+  $("modeIn").onclick = function () {
+    setUnitMode("in");
+  };
+  if (unitMode === "in") {
+    $("modeFt").className = "";
+    $("modeIn").className = "on";
+  }
 
   /* ---------- SVG canvas ---------- */
   function draw() {
@@ -781,7 +823,7 @@
               "font-size": "12",
               "font-family": "Satoshi, sans-serif",
             },
-            "Unassigned " + formatIn(g.w) + " x " + formatIn(g.h)
+            "Unassigned " + formatPairDim(g.w, g.h)
           )
         );
       }
@@ -838,7 +880,7 @@
               "font-weight": "600",
               "font-family": "General Sans, sans-serif",
             },
-            "U" + u.index + "  " + formatIn(u.w) + " x " + formatIn(u.h)
+            "U" + u.index + "  " + formatPairDim(u.w, u.h)
           )
         );
         gEl.appendChild(
@@ -944,7 +986,7 @@
       svg.appendChild(gEl);
     });
 
-    dimLine(svg, ox, oy - 16, ox + drawW, oy - 16, "Opening " + formatFtIn(ow) + "  " + formatIn(ow));
+    dimLine(svg, ox, oy - 16, ox + drawW, oy - 16, "Opening " + formatDim(ow));
     /* height label */
     svg.appendChild(
       el(
@@ -959,7 +1001,7 @@
           "font-family": "General Sans, sans-serif",
           transform: "rotate(-90 " + (ox - 10) + " " + (oy + drawH / 2) + ")",
         },
-        "Opening " + formatFtIn(oh)
+        "Opening " + formatDim(oh)
       )
     );
 
@@ -1081,7 +1123,7 @@
           ? m.parentRect.w - (m.x - m.parentRect.x) - m.w
           : m.parentRect.h - (m.y - m.parentRect.y) - m.h;
       live.style.display = "block";
-      live.textContent = formatFtIn(a) + "  /  " + formatFtIn(b) + "   snap 1\"";
+      live.textContent = formatDim(a) + "  /  " + formatDim(b) + "   snap 1\"";
     }
     draw();
   }
@@ -1102,8 +1144,8 @@
       if (selection && (!node || node.kind !== selection.kind)) selection = null;
       var ow = $("openW");
       var oh = $("openH");
-      if (ow && document.activeElement !== ow) ow.value = formatFtIn(state.opening.wIn);
-      if (oh && document.activeElement !== oh) oh.value = formatFtIn(state.opening.hIn);
+      if (ow && document.activeElement !== ow) ow.value = formatDim(state.opening.wIn);
+      if (oh && document.activeElement !== oh) oh.value = formatDim(state.opening.hIn);
       var flat = flatten(state);
       renderChrome(flat);
       draw();
