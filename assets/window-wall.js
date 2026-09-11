@@ -229,6 +229,9 @@
     units.forEach(function (u, i) {
       u.index = i + 1;
     });
+    mullions.forEach(function (m, i) {
+      m.index = i + 1;
+    });
     return { pocket: pocket, units: units, mullions: mullions, gaps: gaps };
   }
 
@@ -346,7 +349,6 @@
         if (!sn || sn.kind !== "split") return state;
         return Object.assign({}, state, {
           tree: setNode(state.tree, action.path, Object.assign({}, sn, { stock: action.stock })),
-          mullionStock: action.stock,
         });
       }
       case "moveSplit": {
@@ -510,8 +512,8 @@
       toolBtn("Add unit", "add", !canAdd) +
       toolBtn("Split vertical", "splitV", !canV) +
       toolBtn("Split horizontal", "splitH", !canH) +
-      '<p class="ww-hint">Drag the mullion to size uneven units — e.g. 6′ over 4′ in a 10′ opening.</p>' +
-      stockPicker(sm ? "Selected mullion" : "Mullion stock", (sm ? sm.stock : state.mullionStock).id, "m:") +
+      '<p class="ww-hint">Click a mullion to set 1x4 / 2x4 on that bar only. Drag to size. Mix stocks on larger walls.</p>' +
+      stockPicker(sm ? "This mullion only" : "Next mullion stock", (sm ? sm.stock : state.mullionStock).id, "m:") +
       stockPicker("Buck stock", state.buckStock.id, "b:") +
       toolBtn("Delete", "delete", !selection, "danger") +
       toolBtn("Undo", "undo", past.length === 0) +
@@ -561,16 +563,19 @@
         "</p>";
     } else if (sm) {
       side +=
-        "<div style=\"font-family:General Sans,sans-serif;font-size:18px;font-weight:600;\">" +
+        "<div style=\"font-family:General Sans,sans-serif;font-size:18px;font-weight:600;\">M" +
+        sm.index +
+        " · " +
         sm.stock.nominal +
-        " mullion</div>" +
-        '<p class="ww-hint">' +
-        (sm.axis === "v" ? "Vertical" : "Horizontal") +
-        " · actual " +
-        formatIn(sm.stock.tIn) +
-        ". Drag the bar to resize.</p>";
+        "</div>" +
+        "<dl>" +
+        row("Axis", sm.axis === "v" ? "Vertical" : "Horizontal") +
+        row("Thickness", formatIn(sm.stock.tIn)) +
+        row("Length", formatDim(sm.axis === "v" ? sm.h : sm.w)) +
+        "</dl>" +
+        '<p class="ww-hint">Stock on this bar only. Other mullions stay as they are. Drag the bar to resize the units.</p>';
     } else {
-      side += '<p class="ww-hint">Click a unit or drag a mullion.</p>';
+      side += '<p class="ww-hint">Click a unit or a mullion. Each mullion can be 1x4 or 2x4 on its own.</p>';
     }
 
     side += '<div class="ww-sec">Units</div>';
@@ -587,6 +592,26 @@
           formatDim(u.w) +
           " x " +
           formatDim(u.h) +
+          "</span></li>";
+      });
+      side += "</ul>";
+    }
+    side += '<div class="ww-sec">Mullions</div>';
+    if (flat.mullions.length === 0) side += '<p class="ww-hint">None yet — split a unit.</p>';
+    else {
+      side += "<ul style='list-style:none;font-size:13px;'>";
+      flat.mullions.forEach(function (m) {
+        side +=
+          "<li style='display:flex;justify-content:space-between;padding:3px 0;'><span>M" +
+          m.index +
+          " " +
+          m.stock.nominal +
+          " " +
+          (m.axis === "v" ? "vert" : "horiz") +
+          "</span><span style='color:var(--muted)'>" +
+          formatIn(m.stock.tIn) +
+          " × " +
+          formatDim(m.axis === "v" ? m.h : m.w) +
           "</span></li>";
       });
       side += "</ul>";
@@ -663,9 +688,9 @@
       } else if (act === "splitV" || act === "splitH") {
         if (!selection || selection.kind !== "unit") return;
         var axis = act === "splitV" ? "v" : "h";
-        dispatch({ type: "split", path: selection.path, axis: axis });
-        selection = { kind: "unit", path: selection.path.concat([0]) };
-        render();
+        var splitPath = selection.path.slice();
+        selection = { kind: "mullion", path: splitPath };
+        dispatch({ type: "split", path: splitPath, axis: axis });
       } else if (act === "delete") {
         if (!selection) return;
         if (selection.kind === "unit") dispatch({ type: "deleteUnit", path: selection.path });
@@ -908,38 +933,30 @@
         })
       );
       sash(gEl, u.label, x + inset, y + inset, Math.max(0, w - inset * 2), Math.max(0, h - inset * 2));
-      if (w > 44 && h > 32) {
+      if (w > 36 && h > 28) {
         gEl.appendChild(
           el(
             "text",
             {
               x: x + w / 2,
-              y: y + h / 2 - 10,
-              "text-anchor": "middle",
-              fill: "#0b0b0c",
-              "font-size": "13",
-              "font-weight": "600",
-              "font-family": "General Sans, sans-serif",
-            },
-            "U" + u.index + "  " + formatPairDim(u.w, u.h)
-          )
-        );
-        gEl.appendChild(
-          el(
-            "text",
-            {
-              x: x + w / 2,
-              y: y + h / 2 + 8,
+              y: y + h / 2 + 4,
               "text-anchor": "middle",
               fill: "#2563eb",
-              "font-size": "10",
+              "font-size": h > 64 ? "10" : "9",
               "font-weight": "600",
               "font-family": "General Sans, sans-serif",
-              "letter-spacing": "1.1",
+              "letter-spacing": "0.8",
+              style: "pointer-events:none",
             },
-            (w > 80 ? labelName(u.label) : labelShort(u.label)).toUpperCase()
+            "U" + u.index + "  " + (w > 90 ? labelName(u.label) : labelShort(u.label)).toUpperCase()
           )
         );
+      }
+      if (w > 52) {
+        unitHDim(gEl, x, y + 12, w, formatDim(u.w));
+      }
+      if (h > 52) {
+        unitVDim(gEl, x + 12, y, h, formatDim(u.h));
       }
       gEl.addEventListener("pointerdown", function (e) {
         e.stopPropagation();
@@ -1002,27 +1019,90 @@
     flat.mullions.forEach(function (m) {
       var x = pocketX + px(m.x);
       var y = pocketY + px(m.y);
-      var w = Math.max(px(m.w), 4);
-      var h = Math.max(px(m.h), 4);
+      var w = Math.max(px(m.w), 3);
+      var h = Math.max(px(m.h), 3);
       var selected = selection && selection.kind === "mullion" && samePath(selection.path, m.path);
       var gEl = el("g", {
         style: "cursor:" + (m.axis === "v" ? "ew-resize" : "ns-resize"),
       });
+      var hitPad = 8;
+      if (m.axis === "v") {
+        gEl.appendChild(
+          el("rect", {
+            x: x - hitPad,
+            y: y,
+            width: w + hitPad * 2,
+            height: h,
+            fill: "transparent",
+          })
+        );
+      } else {
+        gEl.appendChild(
+          el("rect", {
+            x: x,
+            y: y - hitPad,
+            width: w,
+            height: h + hitPad * 2,
+            fill: "transparent",
+          })
+        );
+      }
       gEl.appendChild(
         el("rect", {
           x: x,
           y: y,
           width: w,
           height: h,
-          fill: selected ? "#1e40af" : "#1e293b",
+          fill: selected ? "#1d4ed8" : "#1e293b",
+          stroke: selected ? "#93c5fd" : "none",
+          "stroke-width": selected ? "2" : "0",
         })
       );
+      var mLabel = "M" + m.index + "  " + m.stock.nominal + "  " + formatIn(m.stock.tIn);
+      var along = m.axis === "v" ? h : w;
+      if (along > 48) {
+        var tx = m.axis === "v" ? x + w / 2 : x + w / 2;
+        var ty = m.axis === "v" ? y + h / 2 : y + h / 2 + 3;
+        var txt = el(
+          "text",
+          {
+            x: tx,
+            y: ty,
+            "text-anchor": "middle",
+            fill: "#fff",
+            "font-size": along > 90 ? "10" : "9",
+            "font-weight": "700",
+            "font-family": "General Sans, sans-serif",
+            style: "pointer-events:none",
+          },
+          mLabel
+        );
+        if (m.axis === "v") txt.setAttribute("transform", "rotate(-90 " + tx + " " + ty + ")");
+        gEl.appendChild(txt);
+      }
       gEl.addEventListener("pointerdown", function (e) {
         e.stopPropagation();
         e.preventDefault();
         selection = { kind: "mullion", path: m.path };
-        startDrag(e, m.path, "bar", { ox: ox, oy: oy, scale: scale, t: t });
-        renderCanvasOnly();
+        var originX = e.clientX;
+        var originY = e.clientY;
+        var started = false;
+        var geom = { ox: ox, oy: oy, scale: scale, t: t, pocketX: pocketX, pocketY: pocketY };
+        function move(ev) {
+          if (started) return;
+          if (Math.hypot(ev.clientX - originX, ev.clientY - originY) < 6) return;
+          started = true;
+          window.removeEventListener("pointermove", move);
+          window.removeEventListener("pointerup", up);
+          startDrag(ev, m.path, "bar", geom);
+        }
+        function up() {
+          window.removeEventListener("pointermove", move);
+          window.removeEventListener("pointerup", up);
+          if (!started) render();
+        }
+        window.addEventListener("pointermove", move);
+        window.addEventListener("pointerup", up);
       });
       svg.appendChild(gEl);
     });
@@ -1094,6 +1174,7 @@
       n.setAttribute("y2", d);
       n.setAttribute("stroke", "#2563eb");
       n.setAttribute("stroke-width", "1.25");
+      n.setAttribute("style", "pointer-events:none");
       svg.appendChild(n);
     }
     L(x1, y, x2, y);
@@ -1107,8 +1188,75 @@
     t.setAttribute("font-size", "11");
     t.setAttribute("font-weight", "600");
     t.setAttribute("font-family", "General Sans, sans-serif");
+    t.setAttribute("style", "pointer-events:none");
     t.textContent = label;
     svg.appendChild(t);
+  }
+
+  function unitHDim(g, x, y, w, label) {
+    var ns = "http://www.w3.org/2000/svg";
+    function L(a, b, c, d) {
+      var n = document.createElementNS(ns, "line");
+      n.setAttribute("x1", a);
+      n.setAttribute("y1", b);
+      n.setAttribute("x2", c);
+      n.setAttribute("y2", d);
+      n.setAttribute("stroke", "#2563eb");
+      n.setAttribute("stroke-width", "1");
+      n.setAttribute("opacity", "0.85");
+      n.setAttribute("style", "pointer-events:none");
+      g.appendChild(n);
+    }
+    var x1 = x + 6;
+    var x2 = x + w - 6;
+    L(x1, y, x2, y);
+    L(x1, y - 3, x1, y + 3);
+    L(x2, y - 3, x2, y + 3);
+    var t = document.createElementNS(ns, "text");
+    t.setAttribute("x", x + w / 2);
+    t.setAttribute("y", y - 4);
+    t.setAttribute("text-anchor", "middle");
+    t.setAttribute("fill", "#1d4ed8");
+    t.setAttribute("font-size", "11");
+    t.setAttribute("font-weight", "700");
+    t.setAttribute("font-family", "General Sans, sans-serif");
+    t.setAttribute("style", "pointer-events:none");
+    t.textContent = label;
+    g.appendChild(t);
+  }
+
+  function unitVDim(g, x, y, h, label) {
+    var ns = "http://www.w3.org/2000/svg";
+    function L(a, b, c, d) {
+      var n = document.createElementNS(ns, "line");
+      n.setAttribute("x1", a);
+      n.setAttribute("y1", b);
+      n.setAttribute("x2", c);
+      n.setAttribute("y2", d);
+      n.setAttribute("stroke", "#2563eb");
+      n.setAttribute("stroke-width", "1");
+      n.setAttribute("opacity", "0.85");
+      n.setAttribute("style", "pointer-events:none");
+      g.appendChild(n);
+    }
+    var y1 = y + 6;
+    var y2 = y + h - 6;
+    L(x, y1, x, y2);
+    L(x - 3, y1, x + 3, y1);
+    L(x - 3, y2, x + 3, y2);
+    var t = document.createElementNS(ns, "text");
+    var midY = y + h / 2;
+    t.setAttribute("x", x);
+    t.setAttribute("y", midY);
+    t.setAttribute("text-anchor", "middle");
+    t.setAttribute("fill", "#1d4ed8");
+    t.setAttribute("font-size", "11");
+    t.setAttribute("font-weight", "700");
+    t.setAttribute("font-family", "General Sans, sans-serif");
+    t.setAttribute("style", "pointer-events:none");
+    t.setAttribute("transform", "rotate(-90 " + x + " " + midY + ")");
+    t.textContent = label;
+    g.appendChild(t);
   }
 
   function clientToInches(e, geom) {
@@ -1183,7 +1331,11 @@
   function render() {
     try {
       var node = selection ? getNode(state.tree, selection.path) : null;
-      if (selection && (!node || node.kind !== selection.kind)) selection = null;
+      if (selection) {
+        if (!node) selection = null;
+        else if (selection.kind === "unit" && node.kind !== "unit") selection = null;
+        else if (selection.kind === "mullion" && node.kind !== "split") selection = null;
+      }
       var ow = $("openW");
       var oh = $("openH");
       if (ow && document.activeElement !== ow) ow.value = formatDim(state.opening.wIn);
@@ -1242,6 +1394,7 @@
     var PDFDocument = PDFLib.PDFDocument;
     var StandardFonts = PDFLib.StandardFonts;
     var rgb = PDFLib.rgb;
+    var degrees = PDFLib.degrees;
     var pdf = await PDFDocument.create();
     var page = pdf.addPage([792, 612]);
     var pageW = 792,
@@ -1367,19 +1520,45 @@
         pdfSash(u.label, ux + inset, uy + inset, uw - inset * 2, uh - inset * 2);
       }
       if (uw > 28 && uh > 22) {
-        var t1 = "U" + u.index;
-        var t2 = labelName(u.label);
+        var t1 = "U" + u.index + "  " + labelShort(u.label);
         var sz = uw > 70 ? 8 : 7;
         var tw1 = bold.widthOfTextAtSize(winAnsi(t1), sz);
-        write(t1, ux + uw / 2 - tw1 / 2, yOf(uy + uh / 2 - 2), sz, bold, NAVY);
-        if (uh > 36) {
-          var tw2 = font.widthOfTextAtSize(winAnsi(t2), 6);
-          write(t2, ux + uw / 2 - tw2 / 2, yOf(uy + uh / 2 + 10), 6, font, GOLD);
+        write(t1, ux + uw / 2 - tw1 / 2, yOf(uy + uh / 2 + 3), sz, bold, NAVY);
+        if (uw > 48) {
+          var dw = formatFtIn(u.w);
+          var tdw = font.widthOfTextAtSize(winAnsi(dw), 7);
+          write(dw, ux + uw / 2 - tdw / 2, yOf(uy + 11), 7, bold, GOLD);
+        }
+        if (uh > 48) {
+          var dh = formatFtIn(u.h);
+          write(dh, ux + 10, yOf(uy + uh / 2), 7, bold, GOLD);
         }
       }
     });
     flat.mullions.forEach(function (m) {
-      rect(bx + m.x * scale, by + m.y * scale, m.w * scale, m.h * scale, { fill: rgb(0.12, 0.16, 0.23) });
+      var mx = bx + m.x * scale,
+        my = by + m.y * scale,
+        mw = Math.max(m.w * scale, 1.2),
+        mh = Math.max(m.h * scale, 1.2);
+      rect(mx, my, mw, mh, { fill: rgb(0.12, 0.16, 0.23) });
+      var along = m.axis === "v" ? mh : mw;
+      if (along > 36) {
+        var ml = "M" + m.index + " " + m.stock.nominal + " " + formatIn(m.stock.tIn);
+        var msz = 6;
+        var mlw = bold.widthOfTextAtSize(winAnsi(ml), msz);
+        if (m.axis === "v") {
+          page.drawText(winAnsi(ml), {
+            x: mx + mw / 2 + 2,
+            y: yOf(my + mh / 2) - mlw / 2,
+            size: msz,
+            font: bold,
+            color: rgb(1, 1, 1),
+            rotate: degrees(90),
+          });
+        } else {
+          write(ml, mx + mw / 2 - mlw / 2, yOf(my + mh / 2 + 2), msz, bold, rgb(1, 1, 1));
+        }
+      }
     });
     rect(ox, oy, drawW, drawH, { stroke: NAVY, thickness: 1.4 });
 
