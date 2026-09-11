@@ -589,7 +589,10 @@
     return '<div class="ww-row"><dt>' + k + "</dt><dd>" + v + "</dd></div>";
   }
   function esc(s) {
-    return String(s).replace(/&/g, "&").replace(/"/g, """).replace(/</g, "<");
+    return String(s)
+      .replace(/&/g, "\u0026amp;")
+      .replace(/"/g, "\u0026quot;")
+      .replace(/</g, "\u0026lt;");
   }
 
   function bindChrome(flat) {
@@ -1094,11 +1097,21 @@
   }
 
   function render() {
-    var node = selection ? getNode(state.tree, selection.path) : null;
-    if (selection && (!node || node.kind !== selection.kind)) selection = null;
-    var flat = flatten(state);
-    renderChrome(flat);
-    draw();
+    try {
+      var node = selection ? getNode(state.tree, selection.path) : null;
+      if (selection && (!node || node.kind !== selection.kind)) selection = null;
+      var ow = $("openW");
+      var oh = $("openH");
+      if (ow && document.activeElement !== ow) ow.value = formatFtIn(state.opening.wIn);
+      if (oh && document.activeElement !== oh) oh.value = formatFtIn(state.opening.hIn);
+      var flat = flatten(state);
+      renderChrome(flat);
+      draw();
+    } catch (err) {
+      console.error(err);
+      var side = $("wwSide");
+      if (side) side.textContent = "Designer error: " + err.message;
+    }
   }
 
   window.addEventListener("resize", function () {
@@ -1315,4 +1328,9 @@
     setTimeout(render, 50);
   });
   setTimeout(render, 200);
+  if (window.ResizeObserver && $("wwCanvasWrap")) {
+    new ResizeObserver(function () {
+      draw();
+    }).observe($("wwCanvasWrap"));
+  }
 })();

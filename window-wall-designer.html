@@ -13,46 +13,60 @@
 <link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&f[]=satoshi@400,500,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./assets/styles.css">
 <style>
-  .wrap-wide{max-width:1180px;margin:0 auto;padding:24px 20px 48px;}
+  body.ww-page{background:#fff;}
+  .ww-page .site-header{flex-shrink:0;}
+  .wrap.wrap-wide{
+    max-width:1280px;
+    height:calc(100dvh - 64px);
+    max-height:calc(100dvh - 64px);
+    padding:8px 16px 12px;
+    display:flex;flex-direction:column;overflow:hidden;
+  }
+  .ww-page h1{font-size:clamp(20px,2.6vw,28px);margin-bottom:2px;}
+  .ww-page .page-sub{margin-bottom:8px;font-size:13px;}
+  .ww-page .back-link{margin-bottom:8px;}
+  .ww-page .aio-bar{margin-bottom:8px;padding:8px 14px;}
+  .ww-page .warn{margin-bottom:8px;padding:8px 12px;font-size:12px;}
   .ww-app{
     display:flex;flex-direction:column;
-    min-height:min(78vh,820px);
+    flex:1;min-height:0;height:auto;
     background:#fff;border:1px solid var(--border);border-radius:12px;
     overflow:hidden;box-shadow:var(--shadow-sm);
   }
+  .ww-page .legend{display:none;}
   .ww-bar{
-    display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;
-    padding:12px 14px;border-bottom:1px solid var(--border);background:var(--surface-2);
+    display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;
+    padding:10px 12px;border-bottom:1px solid var(--border);background:var(--surface-2);
   }
-  .ww-bar .field{flex:1;min-width:120px;max-width:180px;}
+  .ww-bar .field{flex:1;min-width:110px;max-width:160px;}
   .ww-bar label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:600;}
   .ww-times{align-self:center;color:var(--muted);font-weight:600;padding-bottom:8px;}
   .ww-body{display:flex;flex:1;min-height:0;}
   .ww-tools{
-    width:200px;flex-shrink:0;padding:12px;background:var(--surface-2);
+    width:188px;flex-shrink:0;padding:10px;background:var(--surface-2);
     border-right:1px solid var(--border);overflow:auto;
-    display:flex;flex-direction:column;gap:8px;
+    display:flex;flex-direction:column;gap:6px;
   }
-  .ww-canvas-wrap{flex:1;min-width:0;min-height:360px;position:relative;background:#f8fafc;touch-action:none;}
+  .ww-canvas-wrap{flex:1;min-width:0;min-height:0;position:relative;background:#f1f5f9;touch-action:none;}
   .ww-canvas-wrap svg{display:block;width:100%;height:100%;}
   .ww-side{
-    width:260px;flex-shrink:0;padding:14px;border-left:1px solid var(--border);
+    width:240px;flex-shrink:0;padding:12px;border-left:1px solid var(--border);
     overflow:auto;background:#fff;
   }
   .ww-btn{
     display:flex;align-items:center;gap:8px;width:100%;
-    min-height:44px;padding:8px 12px;border-radius:8px;text-align:left;
+    min-height:40px;padding:8px 10px;border-radius:8px;text-align:left;
     font-size:13px;font-weight:600;color:var(--ink);
     background:#fff;border:1px solid var(--border-strong);
   }
   .ww-btn:hover{background:var(--surface-2);}
   .ww-btn:disabled{opacity:.4;pointer-events:none;}
   .ww-btn.danger{color:var(--danger);border-color:#fecaca;}
-  .ww-stock{background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px;}
+  .ww-stock{background:#fff;border:1px solid var(--border);border-radius:8px;padding:8px;}
   .ww-stock .l{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:6px;}
   .ww-stock button{
     display:flex;justify-content:space-between;width:100%;
-    min-height:36px;padding:6px 10px;border-radius:6px;font-size:13px;
+    min-height:34px;padding:6px 10px;border-radius:6px;font-size:13px;
   }
   .ww-stock button.on{background:var(--primary);color:#fff;}
   .ww-hint{font-size:12px;color:var(--muted);line-height:1.45;padding:0 2px;}
@@ -62,7 +76,7 @@
   .ww-row dd{font-variant-numeric:tabular-nums;}
   .ww-types{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
   .ww-types button{
-    min-height:44px;padding:8px 10px;border-radius:8px;text-align:left;
+    min-height:40px;padding:8px 10px;border-radius:8px;text-align:left;
     font-size:13px;font-weight:600;border:1px solid var(--border-strong);background:#fff;
   }
   .ww-types button.on{background:var(--primary);color:#fff;border-color:var(--primary);}
@@ -81,9 +95,10 @@
   .ww-live{
     position:absolute;left:50%;top:10px;transform:translateX(-50%);
     background:var(--ink);color:#fff;padding:6px 12px;border-radius:8px;
-    font-size:13px;font-weight:600;pointer-events:none;display:none;
+    font-size:13px;font-weight:600;pointer-events:none;display:none;z-index:2;
   }
   @media (max-width:900px){
+    .ww-app{border-radius:10px;}
     .ww-body{flex-direction:column;}
     .ww-tools,.ww-side{display:none;}
     .ww-dock{
@@ -92,21 +107,21 @@
       padding-bottom:max(4px, env(safe-area-inset-bottom));
     }
     .ww-dock button{
-      min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+      min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;
       gap:2px;font-size:10px;font-weight:600;color:var(--ink);
     }
     .ww-dock button:disabled{opacity:.35;}
     .ww-sel{display:block;padding:10px 12px;border-top:1px solid var(--border);background:var(--surface-2);}
     .ww-sel.empty{display:none;}
-    .ww-canvas-wrap{min-height:52vh;}
+    .ww-page .legend{display:none;}
   }
 </style>
 </head>
-<body data-page-type="interior">
+<body data-page-type="interior" class="ww-page">
 <div class="wrap wrap-wide">
   <a class="back-link" href="./index.html">← All Tools</a>
   <h1>Window Wall Designer</h1>
-  <div class="page-sub">One opening. Click to place a unit, split it, drag the mullion to size. The opening never changes — bucks and mullions eat the pocket, leftover stays hatched until you fill it.</div>
+  <div class="page-sub">Click the hatched pocket to place a unit. Split and drag the mullion to size. The opening never changes.</div>
 
   <div class="warn">
     <b>Planning aid only.</b> Unit sizes = opening − bucks − mullions. Verify with the manufacturer and the AHJ before ordering or submitting. Not for construction.
@@ -116,12 +131,12 @@
     <div class="ww-bar">
       <div class="field">
         <label for="openW">Opening W</label>
-        <input id="openW" type="text" value="10'-0"" autocomplete="off">
+        <input id="openW" type="text" value="10'-0" autocomplete="off">
       </div>
       <span class="ww-times">×</span>
       <div class="field">
         <label for="openH">Opening H</label>
-        <input id="openH" type="text" value="10'-0"" autocomplete="off">
+        <input id="openH" type="text" value="10'-0" autocomplete="off">
       </div>
     </div>
     <div class="ww-body">
