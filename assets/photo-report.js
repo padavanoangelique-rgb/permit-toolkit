@@ -1,0 +1,328 @@
+/* Permit Toolkit — Photo Report */
+(function () {
+  "use strict";
+
+  var photos = [];
+  var pdfUrl = null;
+  var busy = false;
+  var $ = function (id) {
+    return document.getElementById(id);
+  };
+
+  function uid() {
+    return "p_" + Math.random().toString(36).slice(2, 9);
+  }
+  function today() {
+    return new Date().toISOString().slice(0, 10);
+  }
+  function nextNum() {
+    if (!photos.length) return 1;
+    return Math.max.apply(
+      null,
+      photos.map(function (p) {
+        return p.number;
+      })
+    ) + 1;
+  }
+  function winAnsi(s) {
+    return String(s || "")
+      .replace(/[×✕✖]/g, "x")
+      .replace(/[—–−]/g, "-")
+      .replace(/[′’‘]/g, "'")
+      .replace(/[″“”]/g, '"')
+      .replace(/[^\x09\x0A\x0D\x20-\x7E\xA0-\xFF]/g, "?");
+  }
+
+  $("prDate").value = today();
+
+  function fileToJpeg(file) {
+    return createImageBitmap(file).then(function (bmp) {
+      var max = 1800;
+      var scale = Math.min(1, max / Math.max(bmp.width, bmp.height));
+      var w = Math.max(1, Math.round(bmp.width * scale));
+      var h = Math.max(1, Math.round(bmp.height * scale));
+      var canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      var ctx = canvas.getContext("2d");
+      ctx.drawImage(bmp, 0, 0, w, h);
+      bmp.close();
+      return new Promise(function (resolve, reject) {
+        canvas.toBlob(
+          function (blob) {
+            if (!blob) return reject(new Error("encode"));
+            blob.arrayBuffer().then(function (ab) {
+              resolve({
+                jpeg: new Uint8Array(ab),
+                w: w,
+                h: h,
+                url: URL.createObjectURL(blob),
+              });
+            });
+          },
+          "image/jpeg",
+          0.84
+        );
+      });
+    });
+  }
+
+  function addFiles(list) {
+    var files = Array.prototype.slice.call(list).filter(function (f) {
+      return !f.type || f.type.indexOf("image/") === 0;
+    });
+    if (!files.length || busy) return;
+    busy = true;
+    var n = nextNum();
+    var chain = Promise.resolve();
+    files.forEach(function (file) {
+      chain = chain.then(function () {
+        return fileToJpeg(file).then(function (j) {
+          photos.push({
+            id: uid(),
+            number: n++,
+            room: "",
+            note: "",
+            jpeg: j.jpeg,
+            w: j.w,
+            h: j.h,
+            url: j.url,
+          });
+        });
+      });
+    });
+    chain
+      .then(render)
+      .catch(function () {
+        render("Could not read that photo. Try a JPEG or PNG from the camera.");
+      })
+      .then(function () {
+        busy = false;
+      });
+  }
+
+  function render(err) {
+    var list = $("prList");
+    if (!photos.length) {
+      list.innerHTML =
+        '<div class="pr-empty"><b>Take the first photo</b>Camera for the field, or add from the library. Each shot gets a number, room, and note.</div>' +
+        (err ? '<p class="pr-err">' + err + "</p>" : "");
+      $("prPdf").disabled = true;
+      return;
+    }
+    $("prPdf").disabled = false;
+    var html = "";
+    photos.forEach(function (p, i) {
+      html +=
+        '<article class="pr-card" data-id="' +
+        p.id +
+        '"><div class="pr-thumb"><img src="' +
+        p.url +
+        '" alt=""><span class="pr-num">' +
+        String(p.number).padStart(2, "0") +
+        '</span></div><div class="pr-fields"><div class="pr-row">' +
+        '<input type="number" min="1" value="' +
+        p.number +
+        '" data-k="number" aria-label="Number">' +
+        '<input list="prRooms" placeholder="Room location" value="' +
+        String(p.room).replace(/"/g, "") +
+        '" data-k="room" aria-label="Room">' +
+        '<button type="button" class="pr-icon" data-act="up"' +
+        (i === 0 ? " disabled" : "") +
+        ">↑</button>" +
+        '<button type="button" class="pr-icon" data-act="down"' +
+        (i === photos.length - 1 ? " disabled" : "") +
+        ">↓</button>" +
+        '<button type="button" class="pr-icon" data-act="del">✕</button>' +
+        "</div>" +
+        '<textarea data-k="note" placeholder="Note — existing window, damage, HOA condition…">' +
+        String(p.note).replace(/</g, "") +
+        "</textarea></div></article>";
+    });
+    if (err) html += '<p class="pr-err">' + err + "</p>";
+    list.innerHTML = html;
+    list.querySelectorAll("[data-k]").forEach(function (el) {
+      el.addEventListener("change", onField);
+      el.addEventListener("input", onField);
+    });
+    list.querySelectorAll("[data-act]").forEach(function (btn) {
+      btn.addEventListener("click", onAct);
+    });
+  }
+
+  function findCard(el) {
+    var n = el;
+    while (n && !n.getAttribute("data-id")) n = n.parentElement;
+    if (!n) return -1;
+    var id = n.getAttribute("data-id");
+    for (var i = 0; i < photos.length; i++) if (photos[i].id === id) return i;
+    return -1;
+  }
+  function onField(e) {
+    var i = findCard(e.target);
+    if (i < 0) return;
+    var k = e.target.getAttribute("data-k");
+    if (k === "number") {
+      var n = parseInt(e.target.value, 10);
+      if (n > 0) photos[i].number = n;
+    } else photos[i][k] = e.target.value;
+  }
+  function onAct(e) {
+    var i = findCard(e.currentTarget);
+    if (i < 0) return;
+    var act = e.currentTarget.getAttribute("data-act");
+    if (act === "del") {
+      URL.revokeObjectURL(photos[i].url);
+      photos.splice(i, 1);
+      photos.forEach(function (p, idx) {
+        p.number = idx + 1;
+      });
+    } else if (act === "up" && i > 0) {
+      var t = photos[i];
+      photos[i] = photos[i - 1];
+      photos[i - 1] = t;
+      photos.forEach(function (p, idx) {
+        p.number = idx + 1;
+      });
+    } else if (act === "down" && i < photos.length - 1) {
+      var t2 = photos[i];
+      photos[i] = photos[i + 1];
+      photos[i + 1] = t2;
+      photos.forEach(function (p, idx) {
+        p.number = idx + 1;
+      });
+    }
+    render();
+  }
+
+  async function makePdf() {
+    if (!photos.length) return render("Add at least one photo.");
+    if (!window.PDFLib) return render("PDF library still loading — try again.");
+    if (busy) return;
+    busy = true;
+    $("prPdf").disabled = true;
+    try {
+      var PDFDocument = PDFLib.PDFDocument;
+      var StandardFonts = PDFLib.StandardFonts;
+      var rgb = PDFLib.rgb;
+      var pdf = await PDFDocument.create();
+      var font = await pdf.embedFont(StandardFonts.Helvetica);
+      var bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+      var pageW = 612,
+        pageH = 792;
+      var NAVY = rgb(0.043, 0.122, 0.227);
+      var BLUE = rgb(0.145, 0.388, 0.922);
+      var INK = rgb(0.05, 0.08, 0.12);
+      var MUTED = rgb(0.35, 0.4, 0.48);
+      var CREAM = rgb(1, 1, 1);
+      function write(page, text, x, y, size, fnt, color) {
+        page.drawText(winAnsi(text), { x: x, y: y, size: size, font: fnt || font, color: color || INK });
+      }
+      function headerBar(page, sub) {
+        page.drawRectangle({ x: 0, y: pageH - 44, width: pageW, height: 44, color: NAVY });
+        write(page, "PHOTO REPORT", 24, pageH - 20, 13, bold, CREAM);
+        write(page, sub, 24, pageH - 34, 8, font, BLUE);
+        page.drawRectangle({ x: 0, y: 0, width: pageW, height: 22, color: NAVY });
+        write(page, "Permit Toolkit  -  permittoolkit.com", 24, 8, 8, font, CREAM);
+      }
+      var job = $("prJob").value.trim() || "Untitled job";
+      var addr = $("prAddr").value.trim() || "No address";
+      var date = $("prDate").value || today();
+      var by = $("prBy").value.trim() || "—";
+      var sorted = photos.slice().sort(function (a, b) {
+        return a.number - b.number;
+      });
+      var cover = pdf.addPage([pageW, pageH]);
+      headerBar(cover, "Existing conditions / field photos");
+      write(cover, job, 24, pageH - 88, 20, bold, NAVY);
+      write(cover, addr, 24, pageH - 110, 12, font, MUTED);
+      write(cover, "Date", 24, pageH - 140, 8, bold, BLUE);
+      write(cover, date, 24, pageH - 156, 12, bold, NAVY);
+      write(cover, "Taken by", 220, pageH - 140, 8, bold, BLUE);
+      write(cover, by, 220, pageH - 156, 12, bold, NAVY);
+      write(cover, "Photos", 400, pageH - 140, 8, bold, BLUE);
+      write(cover, String(sorted.length), 400, pageH - 156, 12, bold, NAVY);
+      write(cover, "INDEX", 24, pageH - 196, 9, bold, BLUE);
+      cover.drawLine({
+        start: { x: 24, y: pageH - 204 },
+        end: { x: pageW - 24, y: pageH - 204 },
+        thickness: 0.8,
+        color: BLUE,
+      });
+      write(cover, "#", 24, pageH - 220, 8, bold, MUTED);
+      write(cover, "Room", 56, pageH - 220, 8, bold, MUTED);
+      write(cover, "Note", 220, pageH - 220, 8, bold, MUTED);
+      var y = pageH - 238;
+      sorted.forEach(function (p, i) {
+        if (y < 48) return;
+        if (i % 2 === 0)
+          cover.drawRectangle({ x: 20, y: y - 6, width: pageW - 40, height: 18, color: rgb(0.96, 0.97, 0.99) });
+        write(cover, String(p.number).padStart(2, "0"), 24, y, 9, bold, NAVY);
+        write(cover, (p.room || "—").slice(0, 28), 56, y, 9);
+        write(cover, (p.note || "").slice(0, 52), 220, y, 8, font, MUTED);
+        y -= 18;
+      });
+      for (var i = 0; i < sorted.length; i++) {
+        var p = sorted[i];
+        var page = pdf.addPage([pageW, pageH]);
+        headerBar(page, "Photo " + String(p.number).padStart(2, "0") + " of " + sorted.length);
+        var img = await pdf.embedJpg(p.jpeg);
+        var boxW = pageW - 48,
+          boxH = pageH - 216;
+        var sc = Math.min(boxW / img.width, boxH / img.height);
+        var dw = img.width * sc,
+          dh = img.height * sc;
+        page.drawRectangle({ x: 24, y: 150, width: boxW, height: boxH, color: rgb(0.96, 0.97, 0.98) });
+        page.drawImage(img, { x: 24 + (boxW - dw) / 2, y: 150 + (boxH - dh) / 2, width: dw, height: dh });
+        page.drawRectangle({ x: 24, y: 118, width: 44, height: 22, color: NAVY });
+        write(page, String(p.number).padStart(2, "0"), 34, 124, 12, bold, CREAM);
+        write(page, p.room.trim() || "Unassigned room", 78, 124, 12, bold, NAVY);
+        write(page, (p.note.trim() || "No note").slice(0, 110), 24, 96, 10, font, MUTED);
+      }
+      var bytes = await pdf.save();
+      var blob = new Blob([bytes], { type: "application/pdf" });
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+      pdfUrl = URL.createObjectURL(blob);
+      $("prFrame").src = pdfUrl;
+      $("prSave").href = pdfUrl;
+      $("prSave").setAttribute("download", "photo-report-" + date + ".pdf");
+      $("prOverlay").classList.add("open");
+    } catch (e) {
+      render("PDF failed. Try fewer or smaller photos.");
+    }
+    busy = false;
+    $("prPdf").disabled = false;
+  }
+
+  $("prCam").onclick = function () {
+    $("prCamInput").click();
+  };
+  $("prLib").onclick = function () {
+    $("prLibInput").click();
+  };
+  $("prCamInput").onchange = function () {
+    if (this.files) addFiles(this.files);
+    this.value = "";
+  };
+  $("prLibInput").onchange = function () {
+    if (this.files) addFiles(this.files);
+    this.value = "";
+  };
+  $("prPdf").onclick = function () {
+    makePdf();
+  };
+  $("prPrint").onclick = function () {
+    var f = $("prFrame");
+    if (f.contentWindow) {
+      f.contentWindow.focus();
+      f.contentWindow.print();
+    }
+  };
+  $("prClose").onclick = function () {
+    $("prOverlay").classList.remove("open");
+  };
+  $("prList").addEventListener("click", function (e) {
+    if (e.target.closest && e.target.closest(".pr-empty")) $("prCamInput").click();
+  });
+  render();
+})();

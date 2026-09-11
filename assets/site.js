@@ -80,6 +80,7 @@
       { href: '/patio-enclosure-permit-guide.html', label: 'Sunroom Category Guide' }
     ]},
     { group: 'Any Trade', items: [
+      { href: '/photo-report.html',            label: 'Photo Report' },
       { href: '/permit-fee-estimator.html',    label: 'Permit Fee Estimator' },
       { href: '/electrical-load-calculator.html', label: 'Electrical Service Load' },
       { href: '/property-appraisers.html',     label: 'Property Appraisers' }
@@ -276,7 +277,7 @@
         '<div class="pt-gate-card">' +
           '<div class="pt-gate-badge">FREE FOREVER</div>' +
           '<h2 id="pt-gate-title">Enter email to use free tools</h2>' +
-          '<p class="pt-gate-sub">One email unlocks all 10 tools — forever. No login, no password. Built by the team behind <b>PermitAIO</b>.</p>' +
+          '<p class="pt-gate-sub">One email unlocks all 11 tools — forever. No login, no password. Built by the team behind <b>PermitAIO</b>.</p>' +
           '<form class="pt-gate-form" id="ptGateForm" novalidate>' +
             '<label class="pt-gate-label">Email <span aria-hidden="true">*</span>' +
               '<input type="email" name="email" required autocomplete="email" placeholder="you@company.com" />' +
