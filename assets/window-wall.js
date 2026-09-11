@@ -1143,7 +1143,7 @@
     svg.setAttribute("height", size.h);
 
     var flat = flatten(state);
-    var pad = size.w < 520 ? 40 : 56;
+    var pad = size.w < 520 ? 28 : 36;
     var ow = state.opening.wIn;
     var oh = state.opening.hIn;
     var scale = Math.min((size.w - pad * 2) / ow, (size.h - pad * 2) / oh);
@@ -1917,18 +1917,13 @@
 
     var ow = state.opening.wIn,
       oh = state.opening.hIn;
-    var margin = 20;
-    var headerH = 48;
-    var footerH = 26;
-    var gapCol = 16;
-    var contentW = pageW - margin * 2;
-    var areaW = contentW * 0.7;
-    var chartW = contentW - areaW - gapCol;
-    var areaH = pageH - headerH - footerH - 8;
-    var chartX = margin + areaW + gapCol;
-
-    var pad = 32;
-    var scale = Math.min((areaW - pad * 2) / ow, (areaH - pad * 2) / oh);
+    var margin = 16;
+    var headerH = 40;
+    var footerH = 22;
+    var dimPad = 28;
+    var areaW = pageW - margin * 2;
+    var areaH = pageH - headerH - footerH;
+    var scale = Math.min((areaW - dimPad * 2) / ow, (areaH - dimPad * 2) / oh);
     var drawW = ow * scale,
       drawH = oh * scale;
     var ox = margin + (areaW - drawW) / 2;
@@ -2041,7 +2036,18 @@
       );
     }
 
-    var colX = chartX;
+    page.drawRectangle({ x: 0, y: 0, width: pageW, height: 22, color: NAVY });
+    write("Permit Toolkit  -  permittoolkit.com", 20, 8, 8, font, CREAM);
+    write("Full-size elevation  -  verify with manufacturer and AHJ.", 380, 8, 8, font, GOLD);
+
+    page = pdf.addPage([792, 612]);
+    page.drawRectangle({ x: 0, y: pageH - 40, width: pageW, height: 40, color: NAVY });
+    write("UNIT SCHEDULE", 20, pageH - 18, 13, bold, CREAM);
+    write("Permit Toolkit  -  planning aid, not for construction", 20, pageH - 32, 8, font, GOLD);
+    write(today, pageW - 20 - font.widthOfTextAtSize(today, 9), pageH - 22, 9, font, CREAM);
+
+    var colX = 40;
+    var chartW = pageW - 80;
     write("OPENING", colX, yOf(headerH + 8), 8, bold, GOLD);
     write((state.opening.wRaw || formatIn(ow)) + " x " + (state.opening.hRaw || formatIn(oh)), colX, yOf(headerH + 22), 11, bold, NAVY);
     write("BUCKS  " + state.buckStock.nominal + "  " + formatIn(state.buckStock.tIn) + " all around", colX, yOf(headerH + 36), 8);
@@ -2049,7 +2055,7 @@
 
     write("UNIT SCHEDULE", colX, yOf(headerH + 72), 8, bold, GOLD);
     var tableTop = headerH + 86;
-    var cols = [colX, colX + 28, colX + 78, colX + 138];
+    var cols = [colX, colX + 50, colX + 160, colX + 320];
     ["#", "Type", "W in", "H in"].forEach(function (h, i) {
       write(h, cols[i], yOf(tableTop), 8, bold, MUTED);
     });
@@ -2071,7 +2077,7 @@
         rect(colX - 4, rowTop - 10, chartW + 4, rowH - 2, { fill: rgb(0.96, 0.97, 0.99) });
       }
       write("U" + u.index, cols[0], yOf(rowTop), 9, bold, NAVY);
-      write(labelShort(u.label), cols[1], yOf(rowTop), 8, bold, NAVY);
+      write(labelName(u.label), cols[1], yOf(rowTop), 9, bold, NAVY);
       write(dimLabel(u, "w") || "—", cols[2], yOf(rowTop), 9, font, INK);
       write(dimLabel(u, "h") || "—", cols[3], yOf(rowTop), 9, font, INK);
       page.drawLine({
