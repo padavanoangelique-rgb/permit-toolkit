@@ -666,6 +666,57 @@
     return html;
   }
   var lastLabel = "fixed";
+  var LAYER_DEFS = [
+    { id: "opening", name: "Opening" },
+    { id: "bucks", name: "Bucks" },
+    { id: "units", name: "Units" },
+    { id: "ids", name: "Unit IDs" },
+    { id: "dims", name: "Dimensions" },
+    { id: "mullions", name: "Mullions" },
+    { id: "mullLabels", name: "Mullion labels" },
+  ];
+  var layers = {
+    opening: true,
+    bucks: true,
+    units: true,
+    ids: true,
+    dims: true,
+    mullions: true,
+    mullLabels: true,
+  };
+  try {
+    var savedLayers = JSON.parse(localStorage.getItem("pt_ww_layers_v1") || "null");
+    if (savedLayers && typeof savedLayers === "object") {
+      LAYER_DEFS.forEach(function (d) {
+        if (typeof savedLayers[d.id] === "boolean") layers[d.id] = savedLayers[d.id];
+      });
+    }
+  } catch (e) {}
+  function layerOn(id) {
+    return layers[id] !== false;
+  }
+  function saveLayers() {
+    try {
+      localStorage.setItem("pt_ww_layers_v1", JSON.stringify(layers));
+    } catch (e) {}
+  }
+  function layerPanel() {
+    var html = '<div class="ww-stock ww-layers"><div class="l">Layers</div>';
+    LAYER_DEFS.forEach(function (d) {
+      html +=
+        '<button type="button" class="' +
+        (layerOn(d.id) ? "on" : "") +
+        '" data-layer="' +
+        d.id +
+        '"><span>' +
+        d.name +
+        "</span><span>" +
+        (layerOn(d.id) ? "ON" : "off") +
+        "</span></button>";
+    });
+    html += "</div>";
+    return html;
+  }
 
   function typePickerBar(current) {
     var html = "";
@@ -705,6 +756,7 @@
       '<p class="ww-hint">Split into 3 makes two mullions and three equal units. Click a mullion to set 1x4 / 2x4 on that bar only. Drag to size.</p>' +
       stockPicker(sm ? "This mullion only" : "Next mullion stock", (sm ? sm.stock : state.mullionStock).id, "m:") +
       stockPicker("Buck stock", state.buckStock.id, "b:") +
+      layerPanel() +
       toolBtn("Delete", "delete", !selection, "danger") +
       toolBtn("Undo", "undo", past.length === 0) +
       toolBtn("Reset layout", "reset") +
@@ -947,6 +999,14 @@
         else dispatch({ type: "setMullionStock", stock: stock });
       };
     });
+    document.querySelectorAll("[data-layer]").forEach(function (btn) {
+      btn.onclick = function () {
+        var id = btn.getAttribute("data-layer");
+        layers[id] = !layerOn(id);
+        saveLayers();
+        render();
+      };
+    });
     document.querySelectorAll("[data-label]").forEach(function (btn) {
       btn.onclick = function () {
         lastLabel = btn.getAttribute("data-label");
@@ -1116,12 +1176,13 @@
         y: oy,
         width: drawW,
         height: drawH,
-        fill: "#cbd5e1",
-        stroke: "#0b0b0c",
-        "stroke-width": "1.5",
+        fill: layerOn("bucks") ? "#cbd5e1" : "#f8fafc",
+        stroke: layerOn("opening") ? "#0b0b0c" : "none",
+        "stroke-width": layerOn("opening") ? "1.5" : "0",
       })
     );
 
+    if (layerOn("units"))
     flat.gaps.forEach(function (g) {
       var gEl = el("g", { "data-gap": g.path.join(".") });
       gEl.appendChild(
@@ -1158,6 +1219,7 @@
       svg.appendChild(gEl);
     });
 
+    if (layerOn("units"))
     flat.units.forEach(function (u) {
       var x = pocketX + px(u.x);
       var y = pocketY + px(u.y);
@@ -1190,7 +1252,7 @@
       );
       sash(gEl, u.label, x + inset, y + inset, Math.max(0, w - inset * 2), Math.max(0, h - inset * 2));
       var idLabel = "U" + u.index + "  " + (w > 90 ? labelName(u.label) : labelShort(u.label)).toUpperCase();
-      if (w > 28 && h > 16) {
+      if (layerOn("ids") && w > 28 && h > 16) {
         gEl.appendChild(
           el(
             "text",
@@ -1211,10 +1273,10 @@
       }
       var dw = dimLabel(u, "w");
       var dh = dimLabel(u, "h");
-      if (h >= 56 && w >= 48) {
+      if (layerOn("dims") && h >= 56 && w >= 48) {
         if (dw) unitHDim(gEl, x, y + 12, w, dw);
         if (dh) unitVDim(gEl, x + 12, y, h, dh);
-      } else if (w > 36 && (dw || dh)) {
+      } else if (layerOn("dims") && w > 36 && (dw || dh)) {
         gEl.appendChild(
           el(
             "text",
@@ -1290,6 +1352,7 @@
       }
     });
 
+    if (layerOn("mullions"))
     flat.mullions.forEach(function (m) {
       var x = pocketX + px(m.x);
       var y = pocketY + px(m.y);
@@ -1334,7 +1397,7 @@
       );
       var mLabel = "M" + m.index + "  " + m.stock.nominal + "  " + formatIn(m.stock.tIn);
       var along = m.axis === "v" ? h : w;
-      if (along > 36) {
+      if (layerOn("mullLabels") && along > 36) {
         var txt;
         if (m.axis === "v") {
           var tx = x + w + 11;
@@ -1407,6 +1470,7 @@
       svg.appendChild(gEl);
     });
 
+    if (layerOn("opening")) {
     dimLine(svg, ox, oy - 16, ox + drawW, oy - 16, "Opening " + (state.opening.wRaw || formatDraw(ow)));
     /* height label */
     svg.appendChild(
@@ -1425,6 +1489,7 @@
         "Opening " + (state.opening.hRaw || formatDraw(oh))
       )
     );
+    }
 
     svg._geom = { ox: ox, oy: oy, scale: scale, t: t, pocketX: pocketX, pocketY: pocketY };
   }
@@ -1836,13 +1901,17 @@
     var ox = margin + (areaW - drawW) / 2;
     var oy = headerH + (areaH - drawH) / 2;
 
-    rect(ox, oy, drawW, drawH, { fill: rgb(0.8, 0.84, 0.88) });
+    if (layerOn("bucks") || layerOn("opening"))
+      rect(ox, oy, drawW, drawH, { fill: layerOn("bucks") ? rgb(0.8, 0.84, 0.88) : rgb(0.97, 0.97, 0.98), stroke: layerOn("opening") ? NAVY : undefined, thickness: layerOn("opening") ? 1.4 : 0 });
     var bx = ox + tBuck * scale,
       by = oy + tBuck * scale;
-    rect(bx, by, flat.pocket.w * scale, flat.pocket.h * scale, { fill: rgb(0.93, 0.95, 0.98) });
+    if (layerOn("units"))
+      rect(bx, by, flat.pocket.w * scale, flat.pocket.h * scale, { fill: rgb(0.93, 0.95, 0.98) });
+    if (layerOn("units"))
     flat.gaps.forEach(function (g) {
       rect(bx + g.x * scale, by + g.y * scale, g.w * scale, g.h * scale, { fill: rgb(0.82, 0.84, 0.87) });
     });
+    if (layerOn("units"))
     flat.units.forEach(function (u) {
       var ux = bx + u.x * scale,
         uy = by + u.y * scale,
@@ -1858,11 +1927,13 @@
         });
         pdfSash(u.label, ux + inset, uy + inset, uw - inset * 2, uh - inset * 2);
       }
-      if (uw > 14 && uh > 12) {
+      if (layerOn("ids") && uw > 14 && uh > 12) {
         var t1 = "U" + u.index + "  " + labelShort(u.label);
         var sz = uh > 28 && uw > 50 ? 8 : 6.5;
         var tw1 = bold.widthOfTextAtSize(winAnsi(t1), sz);
         write(t1, ux + Math.max(2, uw / 2 - tw1 / 2), yOf(uy + uh / 2 + sz / 3), sz, bold, NAVY);
+      }
+      if (layerOn("dims") && uw > 14 && uh > 12) {
         var dw = dimLabel(u, "w");
         var dh = dimLabel(u, "h");
         if (uh >= 40 && uw >= 36) {
@@ -1896,6 +1967,7 @@
         }
       }
     });
+    if (layerOn("mullions"))
     flat.mullions.forEach(function (m) {
       var mx = bx + m.x * scale,
         my = by + m.y * scale,
@@ -1903,7 +1975,7 @@
         mh = Math.max(m.h * scale, 1.2);
       rect(mx, my, mw, mh, { fill: rgb(0.12, 0.16, 0.23) });
       var along = m.axis === "v" ? mh : mw;
-      if (along > 24) {
+      if (layerOn("mullLabels") && along > 24) {
         var ml = "M" + m.index + "  " + m.stock.nominal + "  " + formatIn(m.stock.tIn);
         var msz = 7;
         var mlw = bold.widthOfTextAtSize(winAnsi(ml), msz);
@@ -1924,16 +1996,17 @@
         }
       }
     });
-    rect(ox, oy, drawW, drawH, { stroke: NAVY, thickness: 1.4 });
-
-    write(
-      "OPENING  " + (state.opening.wRaw || formatIn(ow)) + " x " + (state.opening.hRaw || formatIn(oh)),
-      ox,
-      yOf(oy - 14),
-      8,
-      bold,
-      NAVY
-    );
+    if (layerOn("opening")) {
+      rect(ox, oy, drawW, drawH, { stroke: NAVY, thickness: 1.4 });
+      write(
+        "OPENING  " + (state.opening.wRaw || formatIn(ow)) + " x " + (state.opening.hRaw || formatIn(oh)),
+        ox,
+        yOf(oy - 14),
+        8,
+        bold,
+        NAVY
+      );
+    }
 
     var colX = chartX;
     write("OPENING", colX, yOf(headerH + 8), 8, bold, GOLD);
