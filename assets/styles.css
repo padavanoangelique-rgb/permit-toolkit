@@ -377,33 +377,79 @@ input[type=number]:focus, input[type=text]:focus, input[type=email]:focus, selec
   font-size:11px; font-weight:700; letter-spacing:0.12em;
   color:var(--faint); margin-bottom:10px;
 }
-.tools-featured{
-  display:grid; grid-template-columns:1.15fr 1fr 1fr; gap:16px;
-  margin-bottom:48px;
+
+/* Homepage catalog — description + how-to on every tool */
+.tool-guides{
+  display:grid; grid-template-columns:repeat(2,1fr); gap:16px;
 }
-.tool-card.featured{padding:26px 24px 24px; min-height:240px; display:flex; flex-direction:column;}
-.tool-card.featured h3{font-size:22px; letter-spacing:-0.02em; margin-bottom:10px;}
-.tool-card.featured p{font-size:14.5px; margin-bottom:20px; flex:1;}
-.tools-section-title.rest-title{margin-top:8px; text-align:left;}
-.tools-rest{
-  display:grid; grid-template-columns:repeat(2,1fr); gap:12px;
+.tool-guides.featured-pair{margin-bottom:40px;}
+.tool-guide{
+  background:#fff; border:1px solid var(--border);
+  border-radius:14px; padding:22px 22px 20px;
+  display:flex; flex-direction:column;
+  transition:border-color .15s, box-shadow .15s, transform .15s;
 }
-.tool-card.compact{
-  display:grid; grid-template-columns:auto 1fr auto; gap:14px; align-items:center;
-  padding:16px 18px;
+.tool-guide:hover{border-color:#bfdbfe; box-shadow:var(--shadow); transform:translateY(-1px);}
+.tool-guide.lead{
+  margin-bottom:16px;
+  padding:28px 28px 24px;
+  background:linear-gradient(180deg,#eff6ff 0%,#fff 42%);
+  border-color:#bfdbfe;
 }
-.tool-card.compact .rank{margin:0; font-size:12px; min-width:1.6em;}
-.tool-card.compact h3{font-size:15px; margin:0 0 4px;}
-.tool-card.compact p{font-size:13px; margin:0; line-height:1.45;}
-.tool-card.compact .go{margin:0; white-space:nowrap;}
-@media (max-width:900px){
-  .tools-featured{grid-template-columns:1fr;}
-  .tool-card.featured{min-height:0;}
+.tool-guide-top{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
+.tool-guide .rank{
+  font-family:'General Sans','Satoshi',sans-serif;
+  font-size:11px; font-weight:700; letter-spacing:0.12em; color:var(--faint);
 }
-@media (max-width:700px){
-  .tools-rest{grid-template-columns:1fr;}
-  .tool-card.compact{grid-template-columns:auto 1fr; }
-  .tool-card.compact .go{display:none;}
+.tool-guide .tag{
+  display:inline-block; font-size:11px; font-weight:600; letter-spacing:0.02em;
+  padding:3px 8px; border-radius:6px;
+  background:var(--primary-soft); color:var(--primary);
+}
+.tool-guide h3{
+  font-size:20px; letter-spacing:-0.02em; margin:0 0 8px; color:var(--ink);
+}
+.tool-guide.lead h3{font-size:26px;}
+.tool-guide > p{
+  font-size:14.5px; color:var(--muted); line-height:1.55; margin:0 0 16px;
+}
+.how-label{
+  font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
+  color:var(--primary); margin-bottom:8px;
+}
+.how{
+  margin:0 0 16px; padding:0; list-style:none;
+  display:flex; flex-direction:column; gap:8px;
+  flex:1;
+}
+.how li{
+  display:grid; grid-template-columns:22px 1fr; gap:10px; align-items:start;
+  font-size:13.5px; color:var(--ink-2); line-height:1.45;
+}
+.how li::before{
+  counter-increment: how;
+  content: counter(how);
+  width:22px; height:22px; border-radius:999px;
+  background:var(--primary-soft); color:var(--primary);
+  font-size:11px; font-weight:700; letter-spacing:0;
+  display:flex; align-items:center; justify-content:center;
+  margin-top:1px;
+}
+.how{counter-reset: how;}
+.tool-guide .go{
+  font-size:14px; font-weight:600; color:#fff;
+  background:var(--primary);
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  padding:10px 14px; border-radius:8px; align-self:flex-start;
+  transition:background .15s, gap .15s;
+}
+.tool-guide .go:hover{background:var(--primary-hover); gap:10px;}
+.tools-section-title.rest-title{margin:8px 0 16px; text-align:left;}
+
+@media (max-width:800px){
+  .tool-guides{grid-template-columns:1fr;}
+  .tool-guide.lead{padding:22px;}
+  .tool-guide.lead h3{font-size:22px;}
 }
 
 /* ========== PermitAIO promo (footer banner + inline) ========== */
