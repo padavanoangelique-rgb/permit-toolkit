@@ -69,6 +69,7 @@
   // Categorized list of every tool on the site — kept here so every page picks it up.
   var NAV_TOOLS = [
     { group: 'Start here', items: [
+      { href: '/60-second-site-check.html',   label: '60-Second Site Check' },
       { href: '/window-wall-designer.html',    label: 'Window Wall Designer' },
       { href: '/photo-report.html',            label: 'Photo Report' },
       { href: '/noa-lookup.html',              label: 'NOA / Product Approval' }
@@ -277,7 +278,7 @@
         '<div class="pt-gate-card">' +
           '<div class="pt-gate-badge">FREE FOREVER</div>' +
           '<h2 id="pt-gate-title">Enter email to use free tools</h2>' +
-          '<p class="pt-gate-sub">One email unlocks all 11 tools — forever. No login, no password. Built by the team behind <b>PermitAIO</b>.</p>' +
+          '<p class="pt-gate-sub">One email unlocks all 12 tools — forever. No login, no password. Built by the team behind <b>PermitAIO</b>.</p>' +
           '<form class="pt-gate-form" id="ptGateForm" novalidate>' +
             '<label class="pt-gate-label">Email <span aria-hidden="true">*</span>' +
               '<input type="email" name="email" required autocomplete="email" placeholder="you@company.com" />' +
@@ -405,7 +406,7 @@
         '<div class="pt-home-wall-inner">' +
           '<div class="pt-home-wall-badge">FREE FOREVER</div>' +
           '<h2>Browse the free tools</h2>' +
-          '<p>10 field-ready tools for permit prep. One email unlocks the whole site — forever, no login, no password.</p>' +
+          '<p>12 field-ready tools for permit prep. One email unlocks the whole site — forever, no login, no password.</p>' +
           '<button type="button" class="pt-home-wall-btn" id="ptHomeWallBtn">Browse tools →</button>' +
           '<div class="pt-home-wall-fine">Built by the team behind PermitAIO. We\'ll never sell your email.</div>' +
         '</div>' +
@@ -423,6 +424,7 @@
   // - Tool page + not captured: bounce back to homepage where the wall lives.
   // - Tool page + captured: no gate, tool loads immediately.
   function initGate(){
+    if (document.body && document.body.getAttribute("data-skip-gate") === "true") return;
     if (isCaptured()) return;
     if (isHomepage()) {
       installHomepageWall();
@@ -436,6 +438,9 @@
       location.replace('/index.html?next=' + encodeURIComponent(current));
     }
   }
+
+  window.PTCaptureLead = postLead;
+  window.PT_AIO_URL = AIO_URL;
 
   if (document.readyState === 'complete') initGate();
   else window.addEventListener('load', function(){ setTimeout(initGate, 100); });
