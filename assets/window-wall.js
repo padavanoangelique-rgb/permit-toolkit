@@ -983,8 +983,13 @@
       }
     }
     document.querySelectorAll("[data-act]").forEach(function (btn) {
-      btn.onclick = function () {
-        onAct(btn.getAttribute("data-act"));
+      btn.onclick = function (e) {
+        var act = btn.getAttribute("data-act");
+        if (act === "pdf") {
+          e.preventDefault();
+          return;
+        }
+        onAct(act);
       };
     });
     document.querySelectorAll("[data-stock]").forEach(function (btn) {
@@ -1785,9 +1790,28 @@
     }
   }
 
+  function loadPdfLib() {
+    if (window.PDFLib) return Promise.resolve(window.PDFLib);
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js";
+      s.onload = function () {
+        if (window.PDFLib) resolve(window.PDFLib);
+        else reject(new Error("PDF library did not load"));
+      };
+      s.onerror = function () {
+        reject(new Error("Could not load PDF library"));
+      };
+      document.head.appendChild(s);
+    });
+  }
+
   async function makePdf() {
     try {
-      commitAllVisibleSizes();
+      try {
+        commitAllVisibleSizes();
+      } catch (ignore) {}
+      await loadPdfLib();
       if (!window.PDFLib) {
         alert("PDF library still loading — try again in a second.");
         return;
@@ -2099,15 +2123,39 @@
     $("wwPdf").classList.add("open");
     } catch (err) {
       console.error(err);
-      alert("Could not create the PDF. Try again.");
+      alert("Could not create the PDF: " + ((err && err.message) || "try Save after the preview opens"));
     }
   }
 
+  document.addEventListener(
+    "pointerdown",
+    function (e) {
+      var t = e.target;
+      if (t && t.nodeType !== 1) t = t.parentElement;
+      if (!t || typeof t.closest !== "function") return;
+      var btn = t.closest("[data-act]");
+      if (!btn || btn.getAttribute("data-act") !== "pdf") return;
+      e.preventDefault();
+      makePdf();
+    },
+    true
+  );
+
   $("wwPrint").onclick = function () {
-    var f = $("wwPdfFrame");
-    if (f.contentWindow) {
-      f.contentWindow.focus();
-      f.contentWindow.print();
+    if (!pdfUrl) {
+      makePdf();
+      return;
+    }
+    var w = window.open(pdfUrl, "_blank");
+    if (w) {
+      setTimeout(function () {
+        try {
+          w.focus();
+          w.print();
+        } catch (err) {}
+      }, 600);
+    } else if ($("wwSave") && $("wwSave").href) {
+      $("wwSave").click();
     }
   };
   $("wwPdfClose").onclick = function () {
