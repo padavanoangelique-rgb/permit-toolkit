@@ -372,6 +372,40 @@ input[type=number]:focus, input[type=text]:focus, input[type=email]:focus, selec
 .tool-card .go{font-size:13px; font-weight:600; color:var(--primary); display:inline-flex; align-items:center; gap:4px;}
 .tool-card:hover .go{gap:8px;}
 
+.tool-card .rank{
+  display:block; font-family:'General Sans','Satoshi',sans-serif;
+  font-size:11px; font-weight:700; letter-spacing:0.12em;
+  color:var(--faint); margin-bottom:10px;
+}
+.tools-featured{
+  display:grid; grid-template-columns:1.15fr 1fr 1fr; gap:16px;
+  margin-bottom:48px;
+}
+.tool-card.featured{padding:26px 24px 24px; min-height:240px; display:flex; flex-direction:column;}
+.tool-card.featured h3{font-size:22px; letter-spacing:-0.02em; margin-bottom:10px;}
+.tool-card.featured p{font-size:14.5px; margin-bottom:20px; flex:1;}
+.tools-section-title.rest-title{margin-top:8px; text-align:left;}
+.tools-rest{
+  display:grid; grid-template-columns:repeat(2,1fr); gap:12px;
+}
+.tool-card.compact{
+  display:grid; grid-template-columns:auto 1fr auto; gap:14px; align-items:center;
+  padding:16px 18px;
+}
+.tool-card.compact .rank{margin:0; font-size:12px; min-width:1.6em;}
+.tool-card.compact h3{font-size:15px; margin:0 0 4px;}
+.tool-card.compact p{font-size:13px; margin:0; line-height:1.45;}
+.tool-card.compact .go{margin:0; white-space:nowrap;}
+@media (max-width:900px){
+  .tools-featured{grid-template-columns:1fr;}
+  .tool-card.featured{min-height:0;}
+}
+@media (max-width:700px){
+  .tools-rest{grid-template-columns:1fr;}
+  .tool-card.compact{grid-template-columns:auto 1fr; }
+  .tool-card.compact .go{display:none;}
+}
+
 /* ========== PermitAIO promo (footer banner + inline) ========== */
 .aio-promo{
   margin:40px auto 0; max-width:1080px;

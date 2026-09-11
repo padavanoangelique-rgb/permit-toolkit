@@ -68,22 +68,22 @@
   // --- Header (with Tools dropdown) ---
   // Categorized list of every tool on the site — kept here so every page picks it up.
   var NAV_TOOLS = [
-    { group: 'Windows & Doors', items: [
+    { group: 'Start here', items: [
       { href: '/window-wall-designer.html',    label: 'Window Wall Designer' },
-      { href: '/noa-lookup.html',              label: 'NOA / FL Product Approval Lookup' },
+      { href: '/photo-report.html',            label: 'Photo Report' },
+      { href: '/noa-lookup.html',              label: 'NOA / Product Approval' }
+    ]},
+    { group: 'Windows & Doors', items: [
       { href: '/rough-opening-calculator.html',label: 'Rough Opening Calculator' },
       { href: '/design-pressure-calculator.html', label: 'Design Pressure Estimator' },
       { href: '/energy-code-check.html',       label: 'Energy Code Check (U & SHGC)' },
       { href: '/egress-calculator.html',       label: 'Egress Opening Calculator' }
     ]},
-    { group: 'Enclosures', items: [
-      { href: '/patio-enclosure-permit-guide.html', label: 'Sunroom Category Guide' }
-    ]},
     { group: 'Any Trade', items: [
-      { href: '/photo-report.html',            label: 'Photo Report' },
       { href: '/permit-fee-estimator.html',    label: 'Permit Fee Estimator' },
-      { href: '/electrical-load-calculator.html', label: 'Electrical Service Load' },
-      { href: '/property-appraisers.html',     label: 'Property Appraisers' }
+      { href: '/patio-enclosure-permit-guide.html', label: 'Sunroom Category Guide' },
+      { href: '/property-appraisers.html',     label: 'Property Appraisers' },
+      { href: '/electrical-load-calculator.html', label: 'Electrical Service Load' }
     ]}
   ];
 
