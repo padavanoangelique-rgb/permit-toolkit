@@ -83,6 +83,11 @@
   function formatDraw(inches) {
     return formatIn(inches);
   }
+  function dimLabel(u, axis) {
+    if (!u) return "—";
+    if (axis === "v" || axis === "w") return u.lockWRaw || formatDraw(u.w);
+    return u.lockHRaw || formatDraw(u.h);
+  }
   function formatDim(inches) {
     return unitMode === "in" ? formatIn(inches) : formatFtIn(inches);
   }
@@ -219,6 +224,8 @@
           h: node.lockH != null ? Number(node.lockH) : rect.h,
           lockW: node.lockW,
           lockH: node.lockH,
+          lockWRaw: node.lockWRaw,
+          lockHRaw: node.lockHRaw,
         });
         return;
       }
@@ -380,8 +387,10 @@
     }
     return next;
   }
-  function applyUnitSize(state, path, axis, size) {
-    size = Math.max(MIN_UNIT, snapEighth(size));
+  function applyUnitSize(state, path, axis, size, raw) {
+    size = Math.max(1, Number(size));
+    if (!isFinite(size)) return state;
+    raw = String(raw || "").trim();
     var flat = flatten(state);
     var found = false;
     for (var i = 0; i < flat.units.length; i++) {
@@ -390,16 +399,27 @@
     if (!found) return state;
     var geom = geomMap(flat);
     var desired = {};
+    var stampKeys = {};
     var share = !ancestorSplitOnAxis(state.tree, path, axis);
+    stampKeys[pathKey(path)] = { size: size, raw: raw };
     flat.units.forEach(function (u) {
       var key = pathKey(u.path);
-      var cur = axis === "v" ? u.w : u.h;
-      if (samePath(u.path, path)) desired[key] = size;
-      else if (share && !ancestorSplitOnAxis(state.tree, u.path, axis)) desired[key] = size;
-      else desired[key] = snapEighth(cur);
+      var nodeU = getNode(state.tree, u.path);
+      if (samePath(u.path, path)) {
+        desired[key] = size;
+      } else if (share && !ancestorSplitOnAxis(state.tree, u.path, axis)) {
+        desired[key] = size;
+        stampKeys[key] = { size: size, raw: raw };
+      } else if (axis === "v" && nodeU && nodeU.lockW != null) {
+        desired[key] = Number(nodeU.lockW);
+      } else if (axis === "h" && nodeU && nodeU.lockH != null) {
+        desired[key] = Number(nodeU.lockH);
+      } else {
+        desired[key] = axis === "v" ? u.w : u.h;
+      }
     });
     var tree = relockAxis(state.tree, [], axis, desired, geom);
-    tree = stampAxisLock(tree, [], axis, desired);
+    tree = stampAxisLock(tree, [], axis, stampKeys);
     var rootSpan = measureNode(tree, [], axis, desired, geom);
     var bucks = state.buckStock.tIn * 2;
     return Object.assign({}, state, {
@@ -410,23 +430,28 @@
       },
     });
   }
-  function stampAxisLock(node, path, axis, desired) {
+  function stampAxisLock(node, path, axis, stampKeys) {
     if (node.kind === "unit") {
-      var key = pathKey(path);
-      if (desired[key] == null) return node;
-      if (axis === "v") return Object.assign({}, node, { lockW: desired[key] });
-      return Object.assign({}, node, { lockH: desired[key] });
+      var hit = stampKeys[pathKey(path)];
+      if (!hit) return node;
+      if (axis === "v") return Object.assign({}, node, { lockW: hit.size, lockWRaw: hit.raw });
+      return Object.assign({}, node, { lockH: hit.size, lockHRaw: hit.raw });
     }
     if (node.kind !== "split") return node;
     return Object.assign({}, node, {
-      a: stampAxisLock(node.a, path.concat([0]), axis, desired),
-      b: stampAxisLock(node.b, path.concat([1]), axis, desired),
+      a: stampAxisLock(node.a, path.concat([0]), axis, stampKeys),
+      b: stampAxisLock(node.b, path.concat([1]), axis, stampKeys),
     });
   }
   function stripAxisLock(unit, axis) {
     var n = Object.assign({}, unit);
-    if (axis === "v") delete n.lockW;
-    else delete n.lockH;
+    if (axis === "v") {
+      delete n.lockW;
+      delete n.lockWRaw;
+    } else {
+      delete n.lockH;
+      delete n.lockHRaw;
+    }
     return n;
   }
   function weightsFromMullionCenter(m, pointer) {
@@ -577,7 +602,7 @@
         return Object.assign({}, state, { tree: prune(setNode(state.tree, action.path, merged)) });
       }
       case "setUnitSize":
-        return applyUnitSize(state, action.path, action.axis, action.size);
+        return applyUnitSize(state, action.path, action.axis, action.size, action.raw);
       case "reset":
         return initialState();
       default:
@@ -744,12 +769,12 @@
         "</div>" +
         '<div class="inputs-grid-2">' +
         '<div class="field"><label>W</label><input id="unitW" type="text" inputmode="decimal" value="' +
-        esc(formatDim(su.w)) +
+        esc(dimLabel(su, "w")) +
         '"></div>' +
         '<div class="field"><label>H</label><input id="unitH" type="text" inputmode="decimal" value="' +
-        esc(formatDim(su.h)) +
+        esc(dimLabel(su, "h")) +
         '"></div></div>' +
-        '<p class="ww-hint">Type the exact size. That unit keeps it. Other units do not change. The opening grows or shrinks to fit.</p>';
+        '<p class="ww-hint">Type the size you want. It prints and displays exactly as entered. Other units stay as they are.</p>';
     } else if (sm) {
       side +=
         "<div style=\"font-family:General Sans,sans-serif;font-size:18px;font-weight:600;\">M" +
@@ -788,7 +813,7 @@
           "<input data-unit-size='w' data-path='" +
           p +
           "' type='text' inputmode='decimal' value='" +
-          esc(formatDim(u.w)) +
+          esc(dimLabel(u, "w")) +
           "' aria-label='U" +
           u.index +
           " width'>" +
@@ -796,7 +821,7 @@
           "<input data-unit-size='h' data-path='" +
           p +
           "' type='text' inputmode='decimal' value='" +
-          esc(formatDim(u.h)) +
+          esc(dimLabel(u, "h")) +
           "' aria-label='U" +
           u.index +
           " height'>" +
@@ -870,12 +895,12 @@
         "<label>W <input data-unit-size='w' data-path='" +
         esc(JSON.stringify(su.path)) +
         "' type='text' inputmode='decimal' value='" +
-        esc(formatDim(su.w)) +
+        esc(dimLabel(su, "w")) +
         "'></label>" +
         "<label>H <input data-unit-size='h' data-path='" +
         esc(JSON.stringify(su.path)) +
         "' type='text' inputmode='decimal' value='" +
-        esc(formatDim(su.h)) +
+        esc(dimLabel(su, "h")) +
         "'></label>" +
         "</div>";
     } else if (sm) {
@@ -972,7 +997,7 @@
         render();
         return;
       }
-      dispatch({ type: "setUnitSize", path: path, axis: axis, size: n });
+      dispatch({ type: "setUnitSize", path: path, axis: axis, size: n, raw: String(raw).trim() });
     }
     function commitSize(axis, input) {
       var su = selectedUnit(flatten(state));
@@ -1208,8 +1233,8 @@
         );
       }
       if (h >= 56 && w >= 48) {
-        unitHDim(gEl, x, y + 12, w, formatDraw(u.w));
-        unitVDim(gEl, x + 12, y, h, formatDraw(u.h));
+        unitHDim(gEl, x, y + 12, w, dimLabel(u, "w"));
+        unitVDim(gEl, x + 12, y, h, dimLabel(u, "h"));
       } else if (w > 36) {
         gEl.appendChild(
           el(
@@ -1224,7 +1249,7 @@
               "font-family": "General Sans, sans-serif",
               style: "pointer-events:none",
             },
-            formatDraw(u.w) + "  ×  " + formatDraw(u.h)
+            dimLabel(u, "w") + "  ×  " + dimLabel(u, "h")
           )
         );
       }
@@ -1692,7 +1717,7 @@
       var key = pathKey(path) + ":" + axis;
       if (seen[key]) return;
       seen[key] = true;
-      next = applyUnitSize(next, path, axis, n);
+      next = applyUnitSize(next, path, axis, n, String(raw).trim());
     }
     var su = selectedUnit(flatten(state));
     var uw = $("unitW");
@@ -1854,8 +1879,8 @@
         var tw1 = bold.widthOfTextAtSize(winAnsi(t1), sz);
         var idY = uh < 28 ? uy + uh / 2 + 6 : uy + uh / 2 + 3;
         write(t1, ux + uw / 2 - tw1 / 2, yOf(idY), sz, bold, NAVY);
-        var dw = formatIn(u.lockW != null ? u.lockW : u.w);
-        var dh = formatIn(u.lockH != null ? u.lockH : u.h);
+        var dw = dimLabel(u, "w");
+        var dh = dimLabel(u, "h");
         var pair = dw + " x " + dh;
         var psz = uh >= 32 ? 7 : 6.5;
         var pw = bold.widthOfTextAtSize(winAnsi(pair), psz);
@@ -1938,8 +1963,8 @@
       }
       write("U" + u.index, cols[0], yOf(rowTop), 9, bold, NAVY);
       write(labelName(u.label), cols[1], yOf(rowTop), 8, bold, NAVY);
-      write(formatIn(u.lockW != null ? u.lockW : u.w), cols[2], yOf(rowTop), 9, font, INK);
-      write(formatIn(u.lockH != null ? u.lockH : u.h), cols[3], yOf(rowTop), 9, font, INK);
+      write(dimLabel(u, "w"), cols[2], yOf(rowTop), 9, font, INK);
+      write(dimLabel(u, "h"), cols[3], yOf(rowTop), 9, font, INK);
       page.drawLine({
         start: { x: colX, y: yOf(rowTop + 16) },
         end: { x: pageW - margin, y: yOf(rowTop + 16) },
