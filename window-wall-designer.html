@@ -13,13 +13,12 @@
 <link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&f[]=satoshi@400,500,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./assets/styles.css">
 <style>
-  body.ww-page{background:#fff;}
+  body.ww-page{background:#fff;height:100dvh;overflow:hidden;display:flex;flex-direction:column;}
   .ww-page .site-header{flex-shrink:0;}
   .wrap.wrap-wide{
-    max-width:1280px;
-    height:calc(100dvh - 64px);
-    max-height:calc(100dvh - 64px);
-    padding:8px 16px 12px;
+    max-width:1280px;width:100%;
+    flex:1;min-height:0;height:auto;max-height:none;
+    padding:8px 16px 8px;
     display:flex;flex-direction:column;overflow:hidden;
   }
   .ww-page h1{font-size:clamp(20px,2.6vw,28px);margin-bottom:2px;}
@@ -34,6 +33,18 @@
     overflow:hidden;box-shadow:var(--shadow-sm);
   }
   .ww-page .legend{display:none;}
+  .ww-page .site-footer{display:none;}
+  .ww-page .aio-promo{
+    flex-shrink:0;margin:0;max-width:none;width:100%;
+    padding:8px 20px;border-radius:0;
+  }
+  .ww-page .aio-promo-inner{grid-template-columns:1fr auto;gap:12px;}
+  .ww-page .aio-promo h2{font-size:14px;margin:0;}
+  .ww-page .aio-promo p,
+  .ww-page .aio-promo .aio-eyebrow,
+  .ww-page .aio-promo .aio-features,
+  .ww-page .aio-email-card{display:none !important;}
+  .ww-page .aio-cta{padding:8px 14px;font-size:13px;}
   .ww-bar{
     display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;
     padding:10px 12px;border-bottom:1px solid var(--border);background:var(--surface-2);

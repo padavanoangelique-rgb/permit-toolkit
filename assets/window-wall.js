@@ -509,8 +509,10 @@
       var canW = !!ancestorSplitOnAxis(state.tree, su.path, "v");
       var canHsz = !!ancestorSplitOnAxis(state.tree, su.path, "h");
       side +=
-        '<div style="font-family:General Sans,sans-serif;font-size:18px;font-weight:600;margin-bottom:8px;">U' +
+        '<div style="font-family:General Sans,sans-serif;font-size:18px;font-weight:600;margin-bottom:4px;">U' +
         su.index +
+        " · " +
+        labelName(su.label) +
         "</div>" +
         '<div class="inputs-grid-2">' +
         '<div class="field"><label>W</label><input id="unitW" type="text" value="' +
@@ -867,7 +869,7 @@
         })
       );
       sash(gEl, u.label, x + inset, y + inset, Math.max(0, w - inset * 2), Math.max(0, h - inset * 2));
-      if (w > 56 && h > 44) {
+      if (w > 44 && h > 32) {
         gEl.appendChild(
           el(
             "text",
@@ -896,7 +898,7 @@
               "font-family": "General Sans, sans-serif",
               "letter-spacing": "1.1",
             },
-            (w > 100 ? labelName(u.label) : labelShort(u.label)).toUpperCase()
+            (w > 80 ? labelName(u.label) : labelShort(u.label)).toUpperCase()
           )
         );
       }
@@ -1195,7 +1197,6 @@
     var PDFDocument = PDFLib.PDFDocument;
     var StandardFonts = PDFLib.StandardFonts;
     var rgb = PDFLib.rgb;
-    var degrees = PDFLib.degrees;
     var pdf = await PDFDocument.create();
     var page = pdf.addPage([792, 612]);
     var pageW = 792,
@@ -1206,6 +1207,8 @@
     var GOLD = rgb(0.145, 0.388, 0.922);
     var CREAM = rgb(1, 1, 1);
     var INK = rgb(0.05, 0.08, 0.12);
+    var MUTED = rgb(0.35, 0.4, 0.48);
+    var RULE = rgb(0.78, 0.82, 0.88);
     function yOf(top) {
       return pageH - top;
     }
@@ -1223,6 +1226,46 @@
         borderWidth: opts.thickness || 0,
       });
     }
+    function pdfLine(x1, top1, x2, top2) {
+      page.drawLine({
+        start: { x: x1, y: yOf(top1) },
+        end: { x: x2, y: yOf(top2) },
+        thickness: 0.8,
+        color: NAVY,
+        opacity: 0.55,
+      });
+    }
+    function pdfSash(label, x, top, w, h) {
+      if (w < 12 || h < 12 || label === "fixed") return;
+      var cx = x + w / 2;
+      if (label === "SH") {
+        pdfLine(x, top + h * 0.55, x + w, top + h * 0.55);
+      } else if (label === "roller") {
+        pdfLine(cx, top, cx, top + h);
+      } else if (label === "casement") {
+        [0.28, 0.5, 0.72].forEach(function (t) {
+          pdfLine(x, top + h * t, x + Math.min(7, w * 0.12), top + h * t);
+        });
+      } else if (label === "swing") {
+        var r = Math.min(w * 0.85, h * 0.6);
+        var steps = 10;
+        for (var i = 0; i < steps; i++) {
+          var a0 = (Math.PI / 2) * (i / steps);
+          var a1 = (Math.PI / 2) * ((i + 1) / steps);
+          pdfLine(
+            x + r * Math.sin(a0),
+            top + h - r * Math.cos(a0),
+            x + r * Math.sin(a1),
+            top + h - r * Math.cos(a1)
+          );
+        }
+        pdfLine(x, top + h - r, x, top + h);
+      } else if (label === "sgd") {
+        pdfLine(x + w * 0.55, top, x + w * 0.55, top + h);
+        pdfLine(x + w * 0.2, top + h * 0.5, x + w * 0.42, top + h * 0.5);
+        pdfLine(x + w * 0.65, top + h * 0.5, x + w * 0.88, top + h * 0.5);
+      }
+    }
 
     var flat = flatten(state);
     var tBuck = state.buckStock.tIn;
@@ -1231,26 +1274,35 @@
       month: "long",
       day: "numeric",
     });
-    page.drawRectangle({ x: 0, y: pageH - 52, width: pageW, height: 52, color: NAVY });
-    write("WINDOW WALL DESIGNER", 28, pageH - 28, 16, bold, CREAM);
-    write("by PermitAIO  -  Permit Toolkit", 28, pageH - 44, 9, font, GOLD);
-    write(today, pageW - 28 - bold.widthOfTextAtSize(today, 9), pageH - 28, 9, font, CREAM);
-    write("NOT FOR CONSTRUCTION - planning aid", pageW - 250, pageH - 44, 8, font, GOLD);
+
+    page.drawRectangle({ x: 0, y: pageH - 40, width: pageW, height: 40, color: NAVY });
+    write("WINDOW WALL DESIGNER", 20, pageH - 18, 13, bold, CREAM);
+    write("Permit Toolkit  -  planning aid, not for construction", 20, pageH - 32, 8, font, GOLD);
+    write(today, pageW - 20 - font.widthOfTextAtSize(today, 9), pageH - 22, 9, font, CREAM);
 
     var ow = state.opening.wIn,
       oh = state.opening.hIn;
-    var areaW = 430,
-      areaH = 430,
-      pad = 36;
+    var margin = 20;
+    var headerH = 48;
+    var footerH = 26;
+    var gapCol = 16;
+    var contentW = pageW - margin * 2;
+    var areaW = contentW * 0.7;
+    var chartW = contentW - areaW - gapCol;
+    var areaH = pageH - headerH - footerH - 8;
+    var chartX = margin + areaW + gapCol;
+
+    var pad = 32;
     var scale = Math.min((areaW - pad * 2) / ow, (areaH - pad * 2) / oh);
     var drawW = ow * scale,
       drawH = oh * scale;
-    var ox = 28 + (areaW - drawW) / 2;
-    var oy = 72 + (areaH - drawH) / 2;
+    var ox = margin + (areaW - drawW) / 2;
+    var oy = headerH + (areaH - drawH) / 2;
+
     rect(ox, oy, drawW, drawH, { fill: rgb(0.8, 0.84, 0.88) });
     var bx = ox + tBuck * scale,
       by = oy + tBuck * scale;
-    rect(bx, by, flat.pocket.w * scale, flat.pocket.h * scale, { fill: rgb(0.12, 0.2, 0.32) });
+    rect(bx, by, flat.pocket.w * scale, flat.pocket.h * scale, { fill: rgb(0.93, 0.95, 0.98) });
     flat.gaps.forEach(function (g) {
       rect(bx + g.x * scale, by + g.y * scale, g.w * scale, g.h * scale, { fill: rgb(0.82, 0.84, 0.87) });
     });
@@ -1259,23 +1311,26 @@
         uy = by + u.y * scale,
         uw = u.w * scale,
         uh = u.h * scale;
-      rect(ux, uy, uw, uh, { fill: rgb(1, 1, 1), stroke: NAVY, thickness: 0.8 });
+      rect(ux, uy, uw, uh, { fill: rgb(1, 1, 1), stroke: NAVY, thickness: 0.9 });
       var inset = Math.min(6, uw * 0.08, uh * 0.08);
-      if (uw > 14 && uh > 14)
-        rect(ux + inset, uy + inset, uw - inset * 2, uh - inset * 2, {
+      if (uw > 12 && uh > 12) {
+        rect(ux + inset, uy + inset, Math.max(1, uw - inset * 2), Math.max(1, uh - inset * 2), {
           fill: rgb(0.94, 0.97, 1),
           stroke: rgb(0.55, 0.65, 0.75),
           thickness: 0.4,
         });
-      if (uw > 36 && uh > 28) {
-        var lines = ["U" + u.index, formatIn(u.w) + " x " + formatIn(u.h), formatPair(u.w, u.h), labelName(u.label)];
-        var size = uw > 80 ? 8 : 7;
-        var lt = uy + uh / 2 - (lines.length * (size + 2)) / 2 + size;
-        lines.forEach(function (line, i) {
-          var tw = (i === 0 ? bold : font).widthOfTextAtSize(winAnsi(line), size);
-          write(line, ux + uw / 2 - tw / 2, yOf(lt), size, i === 0 ? bold : font, NAVY);
-          lt += size + 2;
-        });
+        pdfSash(u.label, ux + inset, uy + inset, uw - inset * 2, uh - inset * 2);
+      }
+      if (uw > 28 && uh > 22) {
+        var t1 = "U" + u.index;
+        var t2 = labelName(u.label);
+        var sz = uw > 70 ? 8 : 7;
+        var tw1 = bold.widthOfTextAtSize(winAnsi(t1), sz);
+        write(t1, ux + uw / 2 - tw1 / 2, yOf(uy + uh / 2 - 2), sz, bold, NAVY);
+        if (uh > 36) {
+          var tw2 = font.widthOfTextAtSize(winAnsi(t2), 6);
+          write(t2, ux + uw / 2 - tw2 / 2, yOf(uy + uh / 2 + 10), 6, font, GOLD);
+        }
       }
     });
     flat.mullions.forEach(function (m) {
@@ -1283,61 +1338,79 @@
     });
     rect(ox, oy, drawW, drawH, { stroke: NAVY, thickness: 1.4 });
 
-    var colX = 478;
-    write("OPENING", colX, yOf(72), 8, bold, GOLD);
-    write(formatPair(ow, oh) + "    " + formatIn(ow) + " x " + formatIn(oh), colX, yOf(86), 11, bold, NAVY);
-    write("BUCKS", colX, yOf(110), 8, bold, GOLD);
-    write(state.buckStock.nominal + "  -  actual " + formatIn(state.buckStock.tIn) + " all around", colX, yOf(124), 10);
-    write(
-      "Net pocket  " + formatPair(flat.pocket.w, flat.pocket.h) + "   " + formatIn(flat.pocket.w) + " x " + formatIn(flat.pocket.h),
-      colX,
-      yOf(138),
-      10
-    );
-    write("UNIT SCHEDULE", colX, yOf(164), 8, bold, GOLD);
-    write("Unit", colX, yOf(180), 8, bold, rgb(0.35, 0.4, 0.48));
-    write("W", colX + 36, yOf(180), 8, bold, rgb(0.35, 0.4, 0.48));
-    write("H", colX + 118, yOf(180), 8, bold, rgb(0.35, 0.4, 0.48));
-    write("Label", colX + 200, yOf(180), 8, bold, rgb(0.35, 0.4, 0.48));
-    var rowTop = 202;
-    if (flat.units.length === 0) {
-      write("No units placed.", colX, yOf(rowTop), 9, font, rgb(0.35, 0.4, 0.48));
-      rowTop += 16;
-    }
-    flat.units.forEach(function (u) {
-      write("U" + u.index, colX, yOf(rowTop), 9, bold, NAVY);
-      write(formatBoth(u.w), colX + 36, yOf(rowTop), 8);
-      write(formatBoth(u.h), colX + 118, yOf(rowTop), 8);
-      write(labelName(u.label), colX + 200, yOf(rowTop), 9);
-      rowTop += 16;
+    write("OPENING  " + formatFtIn(ow) + " x " + formatFtIn(oh), ox, yOf(oy - 14), 8, bold, NAVY);
+
+    var colX = chartX;
+    write("OPENING", colX, yOf(headerH + 8), 8, bold, GOLD);
+    write(formatFtIn(ow) + " x " + formatFtIn(oh), colX, yOf(headerH + 22), 11, bold, NAVY);
+    write(formatIn(ow) + " x " + formatIn(oh), colX, yOf(headerH + 36), 8, font, MUTED);
+    write("BUCKS  " + state.buckStock.nominal + "  " + formatIn(state.buckStock.tIn) + " all around", colX, yOf(headerH + 52), 8);
+    write("POCKET  " + formatFtIn(flat.pocket.w) + " x " + formatFtIn(flat.pocket.h), colX, yOf(headerH + 66), 8);
+
+    write("UNIT SCHEDULE", colX, yOf(headerH + 88), 8, bold, GOLD);
+    var tableTop = headerH + 102;
+    var cols = [colX, colX + 28, colX + 78, colX + 138];
+    ["#", "Type", "W", "H"].forEach(function (h, i) {
+      write(h, cols[i], yOf(tableTop), 8, bold, MUTED);
     });
+    page.drawLine({
+      start: { x: colX, y: yOf(tableTop + 12) },
+      end: { x: pageW - margin, y: yOf(tableTop + 12) },
+      thickness: 0.8,
+      color: GOLD,
+    });
+    var rowTop = tableTop + 22;
+    var rowH = 28;
+    if (flat.units.length === 0) {
+      write("No units placed.", colX, yOf(rowTop), 9, font, MUTED);
+      rowTop += rowH;
+    }
+    flat.units.forEach(function (u, i) {
+      if (rowTop > pageH - footerH - 70) return;
+      if (i % 2 === 0) {
+        rect(colX - 4, rowTop - 12, chartW + 4, rowH - 2, { fill: rgb(0.96, 0.97, 0.99) });
+      }
+      write("U" + u.index, cols[0], yOf(rowTop), 9, bold, NAVY);
+      write(labelName(u.label), cols[1], yOf(rowTop - 2), 8, bold, NAVY);
+      write(formatFtIn(u.w), cols[2], yOf(rowTop - 2), 8, font, INK);
+      write(formatFtIn(u.h), cols[3], yOf(rowTop - 2), 8, font, INK);
+      write(formatIn(u.w), cols[2], yOf(rowTop + 10), 7, font, MUTED);
+      write(formatIn(u.h), cols[3], yOf(rowTop + 10), 7, font, MUTED);
+      page.drawLine({
+        start: { x: colX, y: yOf(rowTop + 16) },
+        end: { x: pageW - margin, y: yOf(rowTop + 16) },
+        thickness: 0.4,
+        color: RULE,
+      });
+      rowTop += rowH;
+    });
+
     rowTop += 10;
     write("MULLIONS", colX, yOf(rowTop), 8, bold, GOLD);
     rowTop += 14;
     if (flat.mullions.length === 0) {
-      write("None.", colX, yOf(rowTop), 9, font, rgb(0.35, 0.4, 0.48));
-      rowTop += 14;
+      write("None.", colX, yOf(rowTop), 9, font, MUTED);
     }
     flat.mullions.forEach(function (m) {
+      if (rowTop > pageH - footerH - 20) return;
       write(
         m.stock.nominal +
           " " +
-          (m.axis === "v" ? "vertical" : "horizontal") +
-          "  -  " +
+          (m.axis === "v" ? "vert" : "horiz") +
+          "  " +
           formatIn(m.stock.tIn) +
-          " actual  -  " +
-          formatIn(m.axis === "v" ? m.h : m.w) +
-          " long",
+          "  x  " +
+          formatIn(m.axis === "v" ? m.h : m.w),
         colX,
         yOf(rowTop),
         8
       );
-      rowTop += 13;
+      rowTop += 12;
     });
 
-    page.drawRectangle({ x: 0, y: 0, width: pageW, height: 32, color: NAVY });
-    write("Permit Toolkit  -  permittoolkit.com", 28, 12, 8, font, CREAM);
-    write("Planning aid only. Verify with manufacturer and AHJ.", 420, 12, 8, font, GOLD);
+    page.drawRectangle({ x: 0, y: 0, width: pageW, height: 22, color: NAVY });
+    write("Permit Toolkit  -  permittoolkit.com", 20, 8, 8, font, CREAM);
+    write("Verify with manufacturer and AHJ.", 420, 8, 8, font, GOLD);
 
     var bytes = await pdf.save();
     var ab = new ArrayBuffer(bytes.byteLength);
