@@ -58,7 +58,7 @@
   function isPng(u8) {
     return u8 && u8.length > 8 && u8[0] === 0x89 && u8[1] === 0x50 && u8[2] === 0x4e && u8[3] === 0x47;
   }
-  function decodeImage(file) {
+  function decodeViaImg(file) {
     return new Promise(function (resolve, reject) {
       var url = URL.createObjectURL(file);
       var img = new Image();
@@ -68,12 +68,22 @@
       };
       img.onerror = function () {
         URL.revokeObjectURL(url);
-        if (typeof createImageBitmap === "function") {
-          createImageBitmap(file).then(resolve, reject);
-        } else reject(new Error("decode"));
+        reject(new Error("decode"));
       };
       img.src = url;
     });
+  }
+  function decodeImage(file) {
+    if (typeof createImageBitmap === "function") {
+      return createImageBitmap(file, { imageOrientation: "from-image" })
+        .catch(function () {
+          return createImageBitmap(file);
+        })
+        .catch(function () {
+          return decodeViaImg(file);
+        });
+    }
+    return decodeViaImg(file);
   }
   function canvasBytes(canvas, type, quality) {
     return new Promise(function (resolve, reject) {
@@ -129,21 +139,55 @@
     });
   }
 
-  function addFiles(list) {
-    var files = Array.prototype.slice.call(list).filter(function (f) {
-      return !f.type || f.type.indexOf("image/") === 0;
+  var inbound = [];
+  var draining = false;
+  var keepShoot = true;
+  try {
+    var savedKeep = localStorage.getItem("pt_pr_keep_shoot");
+    if (savedKeep === "0") keepShoot = false;
+  } catch (e) {}
+
+  function currentRoom() {
+    var el = $("prRoomNext");
+    return el ? String(el.value || "").trim() : "";
+  }
+  function openCamera() {
+    var input = $("prCamInput");
+    if (!input) return;
+    input.value = "";
+    input.click();
+  }
+  function addFiles(list, fromCamera) {
+    var files = Array.prototype.slice.call(list || []).filter(function (f) {
+      if (!f) return false;
+      var t = String(f.type || "").toLowerCase();
+      var n = String(f.name || "").toLowerCase();
+      if (!t || t.indexOf("image/") === 0) return true;
+      return /\.(heic|heif|jpe?g|png|webp|gif|bmp)$/.test(n);
     });
-    if (!files.length || busy) return;
-    busy = true;
+    if (!files.length) return;
+    inbound = inbound.concat(files);
+    drainQueue();
+  }
+  function drainQueue() {
+    if (draining) return;
+    draining = true;
     var n = nextNum();
-    var chain = Promise.resolve();
-    files.forEach(function (file) {
-      chain = chain.then(function () {
-        return fileToJpeg(file).then(function (j) {
+    function step() {
+      if (!inbound.length) {
+        draining = false;
+        render();
+        var listEl = $("prList");
+        if (listEl) listEl.scrollTop = listEl.scrollHeight;
+        return;
+      }
+      var file = inbound.shift();
+      fileToJpeg(file)
+        .then(function (j) {
           photos.push({
             id: uid(),
             number: n++,
-            room: "",
+            room: currentRoom(),
             note: "",
             jpeg: j.jpeg,
             png: j.png,
@@ -151,24 +195,23 @@
             h: j.h,
             url: j.url,
           });
-        });
-      });
-    });
-    chain
-      .then(render)
-      .catch(function () {
-        render("Could not read that photo. Try a JPEG or PNG from the camera.");
-      })
-      .then(function () {
-        busy = false;
-      });
+          render();
+          var listEl = $("prList");
+          if (listEl) listEl.scrollTop = listEl.scrollHeight;
+        })
+        .catch(function () {
+          render("Could not read that photo. Try Camera again, or a JPEG from the library.");
+        })
+        .then(step);
+    }
+    step();
   }
 
   function render(err) {
     var list = $("prList");
     if (!photos.length) {
       list.innerHTML =
-        '<div class="pr-empty"><b>Take the first photo</b>Camera for the field, or add from the library. Each shot gets a number, room, and note.</div>' +
+        '<div class="pr-empty"><b>Take the first photo</b>Rear camera, then keep shooting. Set Next room so every shot is tagged.</div>' +
         (err ? '<p class="pr-err">' + err + "</p>" : "");
       $("prPdf").disabled = true;
       return;
@@ -388,19 +431,45 @@
   }
 
   $("prCam").onclick = function () {
-    $("prCamInput").click();
+    openCamera();
   };
   $("prLib").onclick = function () {
     $("prLibInput").click();
   };
-  $("prCamInput").onchange = function () {
-    if (this.files) addFiles(this.files);
-    this.value = "";
-  };
+  function bindCam(id) {
+    var el = $(id);
+    if (!el) return;
+    el.onchange = function () {
+      if (this.files && this.files.length) addFiles(this.files, true);
+      this.value = "";
+      if (keepShoot) {
+        var next = id === "prCamInput" ? "prCamInput2" : "prCamInput";
+        var other = $(next);
+        if (other) {
+          other.value = "";
+          other.click();
+        }
+      }
+    };
+  }
+  bindCam("prCamInput");
+  bindCam("prCamInput2");
   $("prLibInput").onchange = function () {
-    if (this.files) addFiles(this.files);
+    if (this.files && this.files.length) addFiles(this.files, false);
     this.value = "";
   };
+  if ($("prKeep")) {
+    $("prKeep").checked = keepShoot;
+    $("prKeep").onchange = function () {
+      keepShoot = !!this.checked;
+      try {
+        localStorage.setItem("pt_pr_keep_shoot", keepShoot ? "1" : "0");
+      } catch (e) {}
+    };
+  }
+  if ($("prJobBox") && window.matchMedia && window.matchMedia("(min-width:720px)").matches) {
+    $("prJobBox").open = true;
+  }
   $("prPdf").onclick = function (e) {
     e.preventDefault();
     makePdf();
