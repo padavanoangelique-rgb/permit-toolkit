@@ -175,8 +175,32 @@
     return Object.assign({}, node, { a: a, b: b });
   }
 
+  function lockOf(node, axis) {
+    if (!node) return null;
+    if (node.kind === "unit") {
+      var v = axis === "v" ? node.lockW : node.lockH;
+      return v != null && isFinite(v) ? Number(v) : null;
+    }
+    if (node.kind !== "split") return null;
+    if (node.axis === axis) {
+      var a = lockOf(node.a, axis);
+      var b = lockOf(node.b, axis);
+      if (a != null && b != null) return a + node.stock.tIn + b;
+      return null;
+    }
+    var a2 = lockOf(node.a, axis);
+    var b2 = lockOf(node.b, axis);
+    if (a2 != null && b2 != null) return Math.max(a2, b2);
+    if (a2 != null) return a2;
+    if (b2 != null) return b2;
+    return null;
+  }
   function flatten(state) {
     var pocket = pocketOf(state);
+    var lw = lockOf(state.tree, "v");
+    var lh = lockOf(state.tree, "h");
+    if (lw != null) pocket = { w: lw, h: pocket.h };
+    if (lh != null) pocket = { w: pocket.w, h: lh };
     var units = [];
     var mullions = [];
     var gaps = [];
@@ -191,8 +215,10 @@
           index: 0,
           x: rect.x,
           y: rect.y,
-          w: rect.w,
-          h: rect.h,
+          w: node.lockW != null ? Number(node.lockW) : rect.w,
+          h: node.lockH != null ? Number(node.lockH) : rect.h,
+          lockW: node.lockW,
+          lockH: node.lockH,
         });
         return;
       }
@@ -203,9 +229,24 @@
       var t = node.stock.tIn;
       var span = node.axis === "v" ? rect.w : rect.h;
       var inner = Math.max(0, span - t);
-      var tw = node.aWeight + node.bWeight;
-      var aSize = tw <= 0 ? inner / 2 : inner * (node.aWeight / tw);
-      var bSize = inner - aSize;
+      var aLock = lockOf(node.a, node.axis);
+      var bLock = lockOf(node.b, node.axis);
+      var aSize;
+      var bSize;
+      if (aLock != null && bLock != null) {
+        aSize = aLock;
+        bSize = bLock;
+      } else if (aLock != null) {
+        aSize = Math.min(Math.max(aLock, 0), inner);
+        bSize = inner - aSize;
+      } else if (bLock != null) {
+        bSize = Math.min(Math.max(bLock, 0), inner);
+        aSize = inner - bSize;
+      } else {
+        var tw = node.aWeight + node.bWeight;
+        aSize = tw <= 0 ? inner / 2 : inner * (node.aWeight / tw);
+        bSize = inner - aSize;
+      }
       if (node.axis === "v") {
         mullions.push({
           type: "mullion",
@@ -272,7 +313,7 @@
       stock: stock,
       aWeight: Math.max(0.01, aSize),
       bWeight: Math.max(0.01, bSize),
-      a: { kind: "unit", id: unit.id, label: unit.label },
+      a: stripAxisLock({ kind: "unit", id: unit.id, label: unit.label, lockW: unit.lockW, lockH: unit.lockH }, axis),
       b: {
         kind: "split",
         id: uid("m"),
@@ -358,6 +399,7 @@
       else desired[key] = snapEighth(cur);
     });
     var tree = relockAxis(state.tree, [], axis, desired, geom);
+    tree = stampAxisLock(tree, [], axis, desired);
     var rootSpan = measureNode(tree, [], axis, desired, geom);
     var bucks = state.buckStock.tIn * 2;
     return Object.assign({}, state, {
@@ -367,6 +409,25 @@
         hIn: axis === "h" ? Math.max(12, rootSpan + bucks) : state.opening.hIn,
       },
     });
+  }
+  function stampAxisLock(node, path, axis, desired) {
+    if (node.kind === "unit") {
+      var key = pathKey(path);
+      if (desired[key] == null) return node;
+      if (axis === "v") return Object.assign({}, node, { lockW: desired[key] });
+      return Object.assign({}, node, { lockH: desired[key] });
+    }
+    if (node.kind !== "split") return node;
+    return Object.assign({}, node, {
+      a: stampAxisLock(node.a, path.concat([0]), axis, desired),
+      b: stampAxisLock(node.b, path.concat([1]), axis, desired),
+    });
+  }
+  function stripAxisLock(unit, axis) {
+    var n = Object.assign({}, unit);
+    if (axis === "v") delete n.lockW;
+    else delete n.lockH;
+    return n;
   }
   function weightsFromMullionCenter(m, pointer) {
     var t = m.stock.tIn;
@@ -448,7 +509,7 @@
           stock: state.mullionStock,
           aWeight: 1,
           bWeight: 1,
-          a: u,
+          a: stripAxisLock(u, action.axis),
           b: { kind: "unit", id: uid("u"), label: u.label },
         };
         return Object.assign({}, state, { tree: setNode(state.tree, action.path, next) });
@@ -1621,7 +1682,40 @@
       .replace(/[^\x09\x0A\x0D\x20-\x7E\xA0-\xFF]/g, "?");
   }
 
+  function commitAllVisibleSizes() {
+    var next = state;
+    var seen = {};
+    function applyOne(path, axis, raw) {
+      if (!path) return;
+      var n = parseOpening(raw);
+      if (n == null) return;
+      var key = pathKey(path) + ":" + axis;
+      if (seen[key]) return;
+      seen[key] = true;
+      next = applyUnitSize(next, path, axis, n);
+    }
+    var su = selectedUnit(flatten(state));
+    var uw = $("unitW");
+    var uh = $("unitH");
+    if (su && uw) applyOne(su.path, "v", uw.value);
+    if (su && uh) applyOne(su.path, "h", uh.value);
+    document.querySelectorAll("[data-unit-size]").forEach(function (el) {
+      var path;
+      try {
+        path = JSON.parse(el.getAttribute("data-path") || "[]");
+      } catch (err) {
+        return;
+      }
+      applyOne(path, el.getAttribute("data-unit-size") === "h" ? "h" : "v", el.value);
+    });
+    if (next !== state) {
+      pushHistory();
+      state = next;
+    }
+  }
+
   async function makePdf() {
+    commitAllVisibleSizes();
     if (!window.PDFLib) {
       alert("PDF library still loading — try again in a second.");
       return;
@@ -1713,8 +1807,8 @@
     write("Permit Toolkit  -  planning aid, not for construction", 20, pageH - 32, 8, font, GOLD);
     write(today, pageW - 20 - font.widthOfTextAtSize(today, 9), pageH - 22, 9, font, CREAM);
 
-    var ow = state.opening.wIn,
-      oh = state.opening.hIn;
+    var ow = flat.pocket.w + tBuck * 2,
+      oh = flat.pocket.h + tBuck * 2;
     var margin = 20;
     var headerH = 48;
     var footerH = 26;
@@ -1760,14 +1854,17 @@
         var tw1 = bold.widthOfTextAtSize(winAnsi(t1), sz);
         var idY = uh < 28 ? uy + uh / 2 + 6 : uy + uh / 2 + 3;
         write(t1, ux + uw / 2 - tw1 / 2, yOf(idY), sz, bold, NAVY);
-        var dw = formatIn(u.w);
-        var dh = formatIn(u.h);
-        if (uh >= 32) {
+        var dw = formatIn(u.lockW != null ? u.lockW : u.w);
+        var dh = formatIn(u.lockH != null ? u.lockH : u.h);
+        var pair = dw + " x " + dh;
+        var psz = uh >= 32 ? 7 : 6.5;
+        var pw = bold.widthOfTextAtSize(winAnsi(pair), psz);
+        write(pair, ux + Math.max(2, uw / 2 - pw / 2), yOf(uy + Math.min(11, Math.max(8, uh * 0.22))), psz, bold, GOLD);
+        if (uh >= 40) {
           var tdw = bold.widthOfTextAtSize(winAnsi(dw), 7);
           write(dw, ux + uw / 2 - tdw / 2, yOf(uy + 9), 7, bold, GOLD);
-          var hStr = dh;
-          var hw = bold.widthOfTextAtSize(winAnsi(hStr), 7);
-          page.drawText(winAnsi(hStr), {
+          var hw = bold.widthOfTextAtSize(winAnsi(dh), 7);
+          page.drawText(winAnsi(dh), {
             x: ux + 8,
             y: yOf(uy + uh / 2) - hw / 2,
             size: 7,
@@ -1775,10 +1872,6 @@
             color: GOLD,
             rotate: degrees(90),
           });
-        } else {
-          var pair = dw + "  x  " + dh;
-          var pw = bold.widthOfTextAtSize(winAnsi(pair), 7);
-          write(pair, ux + Math.max(4, uw / 2 - pw / 2), yOf(uy + Math.min(9, uh * 0.4)), 7, bold, GOLD);
         }
       }
     });
@@ -1845,8 +1938,8 @@
       }
       write("U" + u.index, cols[0], yOf(rowTop), 9, bold, NAVY);
       write(labelName(u.label), cols[1], yOf(rowTop), 8, bold, NAVY);
-      write(formatIn(u.w), cols[2], yOf(rowTop), 9, font, INK);
-      write(formatIn(u.h), cols[3], yOf(rowTop), 9, font, INK);
+      write(formatIn(u.lockW != null ? u.lockW : u.w), cols[2], yOf(rowTop), 9, font, INK);
+      write(formatIn(u.lockH != null ? u.lockH : u.h), cols[3], yOf(rowTop), 9, font, INK);
       page.drawLine({
         start: { x: colX, y: yOf(rowTop + 16) },
         end: { x: pageW - margin, y: yOf(rowTop + 16) },
