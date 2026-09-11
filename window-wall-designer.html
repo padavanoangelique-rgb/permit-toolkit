@@ -109,7 +109,27 @@
     font-size:13px;font-weight:600;border:1px solid var(--border-strong);background:#fff;
   }
   .ww-types button.on{background:var(--primary);color:#fff;border-color:var(--primary);}
-  .ww-dock{display:none;}
+  .ww-unit-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;}
+  .ww-unit-row{
+    display:grid;grid-template-columns:36px 1fr auto 1fr;gap:6px;align-items:center;
+    padding:4px;border-radius:8px;
+  }
+  .ww-unit-row.on{background:var(--primary-soft);}
+  .ww-unit-id{
+    font-size:12px;font-weight:700;color:var(--primary);text-align:left;padding:4px 0;
+  }
+  .ww-unit-row input{
+    width:100%;min-height:34px;padding:4px 8px;border:1px solid var(--border-strong);
+    border-radius:6px;font-size:13px;font-variant-numeric:tabular-nums;
+  }
+  .ww-unit-row span{color:var(--faint);font-size:12px;}
+  .ww-sel-head{margin-bottom:8px;}
+  .ww-sel-sizes{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .ww-sel-sizes label{font-size:11px;font-weight:600;color:var(--faint);display:flex;flex-direction:column;gap:4px;}
+  .ww-sel-sizes input{
+    min-height:40px;padding:8px 10px;border:1px solid var(--border-strong);
+    border-radius:8px;font-size:15px;font-weight:600;
+  }
   .ww-sel{display:none;}
   .ww-pdf{
     position:fixed;inset:0;z-index:80;background:rgba(11,11,12,.7);
@@ -188,7 +208,7 @@
   <div class="legend" style="margin-top:28px;">
     <h2>How to use it</h2>
     <p><b>1. Type the opening.</b> Inches (120) or feet-inches (10'-0"). The drawing and PDF always print in inches. The opening is the hole in the wall — it does not change when you add bucks or mullions.</p>
-    <p><b>2. Place a unit</b> by clicking the hatched pocket (or Add unit). Split vertical for two side-by-side, split horizontal for stacked. <b>Split into 3 across</b> or <b>3 stacked</b> for three equal units. Drag the gold handles or the mullion bar — sizes snap to 1".</p>
+    <p><b>2. Place a unit</b> by clicking the hatched pocket (or Add unit). Split vertical for two side-by-side, split horizontal for stacked. <b>Split into 3 across</b> or <b>3 stacked</b> for three equal units. Drag a mullion, or type exact W and H on a unit — the layout stays.</p>
     <p><b>3. Pick the type</b> on the selected unit: Fixed, Single Hung, Horizontal Roller, Casement, Swing Door, Sliding Glass Door.</p>
     <p><b>4. Print / save</b> a labeled shop drawing. Mullion stock is actual thickness (2x4 = 1.5"). Bucks wrap all four sides and shrink the pocket.</p>
   </div>

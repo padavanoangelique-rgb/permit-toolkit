@@ -293,10 +293,73 @@
   function snapIn(v) {
     return Math.round(v / SNAP) * SNAP;
   }
+  function snapEighth(v) {
+    return Math.round(v * 8) / 8;
+  }
   function clampSplitSizes(span, t, aSize) {
     var maxA = span - t - MIN_UNIT;
     var clamped = Math.min(Math.max(aSize, MIN_UNIT), Math.max(MIN_UNIT, maxA));
     return { aWeight: Math.max(0.01, clamped), bWeight: Math.max(0.01, span - t - clamped) };
+  }
+  function weightsForChildSizeExact(m, child, newSize) {
+    var t = m.stock.tIn;
+    var span = m.axis === "v" ? m.parentRect.w : m.parentRect.h;
+    var aSize = child === 0 ? newSize : span - t - newSize;
+    return clampSplitSizes(span, t, aSize);
+  }
+  function applyUnitSize(state, path, axis, size) {
+    size = Math.max(MIN_UNIT, snapEighth(size));
+    var flat = flatten(state);
+    var unit = null;
+    for (var i = 0; i < flat.units.length; i++) {
+      if (samePath(flat.units[i].path, path)) unit = flat.units[i];
+    }
+    if (!unit) return state;
+    var current = axis === "v" ? unit.w : unit.h;
+    if (Math.abs(current - size) < 0.0005) return state;
+    var anc = ancestorSplitOnAxis(state.tree, path, axis);
+    if (!anc) {
+      var delta0 = size - current;
+      return Object.assign({}, state, {
+        opening: {
+          wIn: Math.max(12, state.opening.wIn + (axis === "v" ? delta0 : 0)),
+          hIn: Math.max(12, state.opening.hIn + (axis === "h" ? delta0 : 0)),
+        },
+      });
+    }
+    var mull = null;
+    for (var j = 0; j < flat.mullions.length; j++) {
+      if (samePath(flat.mullions[j].path, anc.splitPath)) mull = flat.mullions[j];
+    }
+    if (!mull) return state;
+    var t = mull.stock.tIn;
+    var span = axis === "v" ? mull.parentRect.w : mull.parentRect.h;
+    var next = state;
+    if (size > span - t - MIN_UNIT + 0.001) {
+      var grow = size - current;
+      next = Object.assign({}, state, {
+        opening: {
+          wIn: Math.max(12, state.opening.wIn + (axis === "v" ? grow : 0)),
+          hIn: Math.max(12, state.opening.hIn + (axis === "h" ? grow : 0)),
+        },
+      });
+      flat = flatten(next);
+      mull = null;
+      for (var k = 0; k < flat.mullions.length; k++) {
+        if (samePath(flat.mullions[k].path, anc.splitPath)) mull = flat.mullions[k];
+      }
+      if (!mull) return next;
+    }
+    var wts = weightsForChildSizeExact(mull, anc.child, size);
+    var node = getNode(next.tree, anc.splitPath);
+    if (!node || node.kind !== "split") return next;
+    return Object.assign({}, next, {
+      tree: setNode(
+        next.tree,
+        anc.splitPath,
+        Object.assign({}, node, { aWeight: wts.aWeight, bWeight: wts.bWeight })
+      ),
+    });
   }
   function weightsFromMullionCenter(m, pointer) {
     var t = m.stock.tIn;
@@ -445,6 +508,8 @@
         else merged = { kind: "gap" };
         return Object.assign({}, state, { tree: prune(setNode(state.tree, action.path, merged)) });
       }
+      case "setUnitSize":
+        return applyUnitSize(state, action.path, action.axis, action.size);
       case "reset":
         return initialState();
       default:
@@ -599,12 +664,10 @@
           : "Filled"
       ) +
       "</dl>" +
-      '<p class="ww-hint">Unit sizes = opening − bucks − mullions. The opening never changes.</p>' +
+      '<p class="ww-hint">Unit sizes = opening − bucks − mullions. Type exact W and H on a unit to keep this layout.</p>' +
       '<div class="ww-sec">Selected</div>';
 
     if (su) {
-      var canW = !!ancestorSplitOnAxis(state.tree, su.path, "v");
-      var canHsz = !!ancestorSplitOnAxis(state.tree, su.path, "h");
       side +=
         '<div style="font-family:General Sans,sans-serif;font-size:18px;font-weight:600;margin-bottom:4px;">U' +
         su.index +
@@ -612,21 +675,13 @@
         labelName(su.label) +
         "</div>" +
         '<div class="inputs-grid-2">' +
-        '<div class="field"><label>W</label><input id="unitW" type="text" value="' +
+        '<div class="field"><label>W</label><input id="unitW" type="text" inputmode="decimal" value="' +
         esc(formatDim(su.w)) +
-        '"' +
-        (canW ? "" : " disabled") +
-        "></div>" +
-        '<div class="field"><label>H</label><input id="unitH" type="text" value="' +
+        '"></div>' +
+        '<div class="field"><label>H</label><input id="unitH" type="text" inputmode="decimal" value="' +
         esc(formatDim(su.h)) +
-        '"' +
-        (canHsz ? "" : " disabled") +
-        "></div></div>" +
-        '<p class="ww-hint">' +
-        (canW ? "W drives the vertical mullion." : "Full pocket width.") +
-        " " +
-        (canHsz ? "H drives the horizontal mullion." : "Full pocket height.") +
-        "</p>";
+        '"></div></div>' +
+        '<p class="ww-hint">Type exact size (48, 48", or 4\'-0"). Layout stays. The other unit on that split takes leftover. Opening grows only if needed.</p>';
     } else if (sm) {
       side +=
         "<div style=\"font-family:General Sans,sans-serif;font-size:18px;font-weight:600;\">M" +
@@ -647,18 +702,37 @@
     side += '<div class="ww-sec">Units</div>';
     if (flat.units.length === 0) side += '<p class="ww-hint">None yet — click the opening.</p>';
     else {
-      side += "<ul style='list-style:none;font-size:13px;'>";
+      side += "<ul class='ww-unit-list'>";
       flat.units.forEach(function (u) {
+        var p = esc(JSON.stringify(u.path));
+        var on = su && samePath(su.path, u.path) ? " on" : "";
         side +=
-          "<li style='display:flex;justify-content:space-between;padding:3px 0;'><span>U" +
+          "<li class='ww-unit-row" +
+          on +
+          "' data-select-unit='" +
+          p +
+          "'>" +
+          "<button type='button' class='ww-unit-id' data-select-unit='" +
+          p +
+          "'>U" +
           u.index +
-          " " +
-          labelName(u.label) +
-          "</span><span style='color:var(--muted)'>" +
-          formatDim(u.w) +
-          " x " +
-          formatDim(u.h) +
-          "</span></li>";
+          "</button>" +
+          "<input data-unit-size='w' data-path='" +
+          p +
+          "' type='text' inputmode='decimal' value='" +
+          esc(formatDim(u.w)) +
+          "' aria-label='U" +
+          u.index +
+          " width'>" +
+          "<span>×</span>" +
+          "<input data-unit-size='h' data-path='" +
+          p +
+          "' type='text' inputmode='decimal' value='" +
+          esc(formatDim(u.h)) +
+          "' aria-label='U" +
+          u.index +
+          " height'>" +
+          "</li>";
       });
       side += "</ul>";
     }
@@ -719,14 +793,23 @@
     if (su) {
       sel.className = "ww-sel";
       sel.innerHTML =
-        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">' +
-        "<strong>U" +
+        "<div class='ww-sel-head'><strong>U" +
         su.index +
         " · " +
-        formatDim(su.w) +
-        " x " +
-        formatDim(su.h) +
-        "</strong></div>";
+        labelName(su.label) +
+        "</strong></div>" +
+        "<div class='ww-sel-sizes'>" +
+        "<label>W <input data-unit-size='w' data-path='" +
+        esc(JSON.stringify(su.path)) +
+        "' type='text' inputmode='decimal' value='" +
+        esc(formatDim(su.w)) +
+        "'></label>" +
+        "<label>H <input data-unit-size='h' data-path='" +
+        esc(JSON.stringify(su.path)) +
+        "' type='text' inputmode='decimal' value='" +
+        esc(formatDim(su.h)) +
+        "'></label>" +
+        "</div>";
     } else if (sm) {
       sel.className = "ww-sel";
       sel.innerHTML =
@@ -815,23 +898,18 @@
     });
     var uw = $("unitW");
     var uh = $("unitH");
-    function commitSize(axis, input) {
-      var su = selectedUnit(flatten(state));
-      if (!su) return;
-      var n = parseLength(input.value);
+    function commitTypedSize(path, axis, raw) {
+      var n = parseOpening(raw);
       if (n == null) {
         render();
         return;
       }
-      var anc = ancestorSplitOnAxis(state.tree, su.path, axis);
-      if (!anc) return;
-      var flat2 = flatten(state);
-      var mull = null;
-      for (var i = 0; i < flat2.mullions.length; i++)
-        if (samePath(flat2.mullions[i].path, anc.splitPath)) mull = flat2.mullions[i];
-      if (!mull) return;
-      var w = weightsForChildSize(mull, anc.child, n);
-      dispatch({ type: "moveSplit", path: anc.splitPath, aWeight: w.aWeight, bWeight: w.bWeight });
+      dispatch({ type: "setUnitSize", path: path, axis: axis, size: n });
+    }
+    function commitSize(axis, input) {
+      var su = selectedUnit(flatten(state));
+      if (!su) return;
+      commitTypedSize(su.path, axis, input.value);
     }
     if (uw)
       uw.onblur = function () {
@@ -845,6 +923,35 @@
       if (!el) return;
       el.onkeydown = function (e) {
         if (e.key === "Enter") el.blur();
+      };
+    });
+    document.querySelectorAll("[data-unit-size]").forEach(function (el) {
+      if (el.id === "unitW" || el.id === "unitH") return;
+      el.onblur = function () {
+        var path;
+        try {
+          path = JSON.parse(el.getAttribute("data-path") || "[]");
+        } catch (err) {
+          return;
+        }
+        commitTypedSize(path, el.getAttribute("data-unit-size") === "h" ? "h" : "v", el.value);
+      };
+      el.onkeydown = function (e) {
+        if (e.key === "Enter") el.blur();
+      };
+      el.onclick = function (e) {
+        e.stopPropagation();
+      };
+    });
+    document.querySelectorAll("[data-select-unit]").forEach(function (el) {
+      el.onclick = function (e) {
+        e.stopPropagation();
+        try {
+          selection = { kind: "unit", path: JSON.parse(el.getAttribute("data-select-unit") || "[]") };
+        } catch (err) {
+          return;
+        }
+        render();
       };
     });
   }
