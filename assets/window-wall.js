@@ -1786,11 +1786,12 @@
   }
 
   async function makePdf() {
-    commitAllVisibleSizes();
-    if (!window.PDFLib) {
-      alert("PDF library still loading — try again in a second.");
-      return;
-    }
+    try {
+      commitAllVisibleSizes();
+      if (!window.PDFLib) {
+        alert("PDF library still loading — try again in a second.");
+        return;
+      }
     var PDFDocument = PDFLib.PDFDocument;
     var StandardFonts = PDFLib.StandardFonts;
     var rgb = PDFLib.rgb;
@@ -1810,6 +1811,11 @@
     function yOf(top) {
       return pageH - top;
     }
+    function write(str, x, y, size, fnt, color) {
+      var s = winAnsi(String(str == null ? "" : str));
+      if (!s) return;
+      page.drawText(s, { x: x, y: y, size: size, font: fnt || font, color: color || INK });
+    }
     function fitStr(str, maxW, size, fnt) {
       var s = winAnsi(String(str || ""));
       var f = fnt || font;
@@ -1818,15 +1824,18 @@
       return s + "...";
     }
     function rect(x, top, w, h, opts) {
-      page.drawRectangle({
+      var spec = {
         x: x,
         y: yOf(top + h),
         width: w,
         height: h,
-        color: opts.fill,
-        borderColor: opts.stroke,
-        borderWidth: opts.thickness || 0,
-      });
+      };
+      if (opts.fill) spec.color = opts.fill;
+      if (opts.stroke) {
+        spec.borderColor = opts.stroke;
+        spec.borderWidth = opts.thickness || 1;
+      }
+      page.drawRectangle(spec);
     }
     function pdfLine(x1, top1, x2, top2) {
       page.drawLine({
@@ -2088,6 +2097,10 @@
     $("wwSave").setAttribute("download", name);
     $("wwOpen").href = pdfUrl;
     $("wwPdf").classList.add("open");
+    } catch (err) {
+      console.error(err);
+      alert("Could not create the PDF. Try again.");
+    }
   }
 
   $("wwPrint").onclick = function () {
