@@ -69,6 +69,7 @@
   // Categorized list of every tool on the site — kept here so every page picks it up.
   var NAV_TOOLS = [
     { group: 'Windows & Doors', items: [
+      { href: '/window-wall-designer.html',    label: 'Window Wall Designer' },
       { href: '/noa-lookup.html',              label: 'NOA / FL Product Approval Lookup' },
       { href: '/rough-opening-calculator.html',label: 'Rough Opening Calculator' },
       { href: '/design-pressure-calculator.html', label: 'Design Pressure Estimator' },
@@ -275,7 +276,7 @@
         '<div class="pt-gate-card">' +
           '<div class="pt-gate-badge">FREE FOREVER</div>' +
           '<h2 id="pt-gate-title">Enter email to use free tools</h2>' +
-          '<p class="pt-gate-sub">One email unlocks all 9 tools — forever. No login, no password. Built by the team behind <b>PermitAIO</b>.</p>' +
+          '<p class="pt-gate-sub">One email unlocks all 10 tools — forever. No login, no password. Built by the team behind <b>PermitAIO</b>.</p>' +
           '<form class="pt-gate-form" id="ptGateForm" novalidate>' +
             '<label class="pt-gate-label">Email <span aria-hidden="true">*</span>' +
               '<input type="email" name="email" required autocomplete="email" placeholder="you@company.com" />' +
@@ -403,7 +404,7 @@
         '<div class="pt-home-wall-inner">' +
           '<div class="pt-home-wall-badge">FREE FOREVER</div>' +
           '<h2>Browse the free tools</h2>' +
-          '<p>9 field-ready tools for permit prep. One email unlocks the whole site — forever, no login, no password.</p>' +
+          '<p>10 field-ready tools for permit prep. One email unlocks the whole site — forever, no login, no password.</p>' +
           '<button type="button" class="pt-home-wall-btn" id="ptHomeWallBtn">Browse tools →</button>' +
           '<div class="pt-home-wall-fine">Built by the team behind PermitAIO. We\'ll never sell your email.</div>' +
         '</div>' +
