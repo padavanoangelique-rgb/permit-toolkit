@@ -316,7 +316,7 @@
         var n = getNode(state.tree, action.path);
         if (!n || n.kind !== "gap") return state;
         return Object.assign({}, state, {
-          tree: setNode(state.tree, action.path, { kind: "unit", id: uid("u"), label: "fixed" }),
+          tree: setNode(state.tree, action.path, { kind: "unit", id: uid("u"), label: action.label || "fixed" }),
         });
       }
       case "split": {
@@ -453,19 +453,22 @@
     html += "</div>";
     return html;
   }
-  function typePicker(current) {
-    var html = '<div class="ww-types">';
+  var lastLabel = "fixed";
+
+  function typePickerBar(current) {
+    var html = "";
     LABELS.forEach(function (l) {
       html +=
         '<button type="button" class="' +
         (l.id === current ? "on" : "") +
         '" data-label="' +
         l.id +
+        '" title="' +
+        l.name +
         '">' +
         l.name +
         "</button>";
     });
-    html += "</div>";
     return html;
   }
 
@@ -529,9 +532,7 @@
         (canW ? "W drives the vertical mullion." : "Full pocket width.") +
         " " +
         (canHsz ? "H drives the horizontal mullion." : "Full pocket height.") +
-        "</p>" +
-        '<div class="ww-sec">Type</div>' +
-        typePicker(su.label);
+        "</p>";
     } else if (sm) {
       side +=
         "<div style=\"font-family:General Sans,sans-serif;font-size:18px;font-weight:600;\">" +
@@ -566,6 +567,12 @@
     }
     $("wwSide").innerHTML = side;
 
+    var typesEl = $("wwTypes");
+    if (typesEl) {
+      var typeCurrent = su ? su.label : lastLabel;
+      typesEl.innerHTML = typePickerBar(typeCurrent);
+    }
+
     $("wwDock").innerHTML =
       '<button type="button" data-act="add"' +
       (canAdd ? "" : " disabled") +
@@ -593,8 +600,7 @@
         formatDim(su.w) +
         " x " +
         formatDim(su.h) +
-        "</strong></div>" +
-        typePicker(su.label);
+        "</strong></div>";
     } else if (sm) {
       sel.className = "ww-sel";
       sel.innerHTML =
@@ -621,7 +627,7 @@
     function onAct(act) {
       if (act === "add") {
         if (flat.gaps[0]) {
-          dispatch({ type: "placeUnit", path: flat.gaps[0].path });
+          dispatch({ type: "placeUnit", path: flat.gaps[0].path, label: lastLabel });
           selection = { kind: "unit", path: flat.gaps[0].path };
           render();
         }
@@ -666,8 +672,10 @@
     });
     document.querySelectorAll("[data-label]").forEach(function (btn) {
       btn.onclick = function () {
+        lastLabel = btn.getAttribute("data-label");
         if (selection && selection.kind === "unit")
-          dispatch({ type: "setLabel", path: selection.path, label: btn.getAttribute("data-label") });
+          dispatch({ type: "setLabel", path: selection.path, label: lastLabel });
+        else render();
       };
     });
     var uw = $("unitW");
@@ -831,7 +839,7 @@
       }
       gEl.addEventListener("pointerdown", function (e) {
         e.stopPropagation();
-        dispatch({ type: "placeUnit", path: g.path });
+        dispatch({ type: "placeUnit", path: g.path, label: lastLabel });
         selection = { kind: "unit", path: g.path };
         render();
       });
