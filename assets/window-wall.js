@@ -84,9 +84,9 @@
     return formatIn(inches);
   }
   function dimLabel(u, axis) {
-    if (!u) return "—";
-    if (axis === "v" || axis === "w") return u.lockWRaw || formatDraw(u.w);
-    return u.lockHRaw || formatDraw(u.h);
+    if (!u) return "";
+    if (axis === "v" || axis === "w") return u.lockWRaw || "";
+    return u.lockHRaw || "";
   }
   function formatDim(inches) {
     return unitMode === "in" ? formatIn(inches) : formatFtIn(inches);
@@ -562,6 +562,13 @@
       }
       case "setUnitSize":
         return applyUnitSize(state, action.path, action.axis, action.size, action.raw);
+      case "clearUnitSize": {
+        var cu = getNode(state.tree, action.path);
+        if (!cu || cu.kind !== "unit") return state;
+        return Object.assign({}, state, {
+          tree: setNode(state.tree, action.path, stripAxisLock(cu, action.axis)),
+        });
+      }
       case "reset":
         return initialState();
       default:
@@ -733,7 +740,7 @@
         '<div class="field"><label>H</label><input id="unitH" type="text" inputmode="decimal" value="' +
         esc(dimLabel(su, "h")) +
         '"></div></div>' +
-        '<p class="ww-hint">Type the unit size. It stays exactly as entered. Opening width and height do not change.</p>';
+        '<p class="ww-hint">Type W and H to show them on the drawing and PDF. If you leave a field blank, no size is printed for it.</p>';
     } else if (sm) {
       side +=
         "<div style=\"font-family:General Sans,sans-serif;font-size:18px;font-weight:600;\">M" +
@@ -951,12 +958,17 @@
     var uw = $("unitW");
     var uh = $("unitH");
     function commitTypedSize(path, axis, raw) {
+      raw = String(raw || "").trim();
+      if (!raw) {
+        dispatch({ type: "clearUnitSize", path: path, axis: axis });
+        return;
+      }
       var n = parseOpening(raw);
       if (n == null) {
         render();
         return;
       }
-      dispatch({ type: "setUnitSize", path: path, axis: axis, size: n, raw: String(raw).trim() });
+      dispatch({ type: "setUnitSize", path: path, axis: axis, size: n, raw: raw });
     }
     function commitSize(axis, input) {
       var su = selectedUnit(flatten(state));
@@ -1197,10 +1209,12 @@
           )
         );
       }
+      var dw = dimLabel(u, "w");
+      var dh = dimLabel(u, "h");
       if (h >= 56 && w >= 48) {
-        unitHDim(gEl, x, y + 12, w, dimLabel(u, "w"));
-        unitVDim(gEl, x + 12, y, h, dimLabel(u, "h"));
-      } else if (w > 36) {
+        if (dw) unitHDim(gEl, x, y + 12, w, dw);
+        if (dh) unitVDim(gEl, x + 12, y, h, dh);
+      } else if (w > 36 && (dw || dh)) {
         gEl.appendChild(
           el(
             "text",
@@ -1214,7 +1228,7 @@
               "font-family": "General Sans, sans-serif",
               style: "pointer-events:none",
             },
-            dimLabel(u, "w") + "  ×  " + dimLabel(u, "h")
+            dw && dh ? dw + "  ×  " + dh : dw || dh
           )
         );
       }
@@ -1677,6 +1691,8 @@
     var seen = {};
     function applyOne(path, axis, raw) {
       if (!path) return;
+      raw = String(raw || "").trim();
+      if (!raw) return;
       var n = parseOpening(raw);
       if (n == null) return;
       var key = pathKey(path) + ":" + axis;
@@ -1729,8 +1745,12 @@
     function yOf(top) {
       return pageH - top;
     }
-    function write(str, x, y, size, fnt, color) {
-      page.drawText(winAnsi(str), { x: x, y: y, size: size, font: fnt || font, color: color || INK });
+    function fitStr(str, maxW, size, fnt) {
+      var s = winAnsi(String(str || ""));
+      var f = fnt || font;
+      if (f.widthOfTextAtSize(s, size) <= maxW) return s;
+      while (s.length > 1 && f.widthOfTextAtSize(s + "...", size) > maxW) s = s.slice(0, -1);
+      return s + "...";
     }
     function rect(x, top, w, h, opts) {
       page.drawRectangle({
@@ -1838,30 +1858,41 @@
         });
         pdfSash(u.label, ux + inset, uy + inset, uw - inset * 2, uh - inset * 2);
       }
-      if (uw > 18 && uh > 10) {
+      if (uw > 14 && uh > 12) {
         var t1 = "U" + u.index + "  " + labelShort(u.label);
-        var sz = uw > 70 && uh > 28 ? 8 : 6.5;
+        var sz = uh > 28 && uw > 50 ? 8 : 6.5;
         var tw1 = bold.widthOfTextAtSize(winAnsi(t1), sz);
-        var idY = uh < 28 ? uy + uh / 2 + 6 : uy + uh / 2 + 3;
-        write(t1, ux + uw / 2 - tw1 / 2, yOf(idY), sz, bold, NAVY);
+        write(t1, ux + Math.max(2, uw / 2 - tw1 / 2), yOf(uy + uh / 2 + sz / 3), sz, bold, NAVY);
         var dw = dimLabel(u, "w");
         var dh = dimLabel(u, "h");
-        var pair = dw + " x " + dh;
-        var psz = uh >= 32 ? 7 : 6.5;
-        var pw = bold.widthOfTextAtSize(winAnsi(pair), psz);
-        write(pair, ux + Math.max(2, uw / 2 - pw / 2), yOf(uy + Math.min(11, Math.max(8, uh * 0.22))), psz, bold, GOLD);
-        if (uh >= 40) {
-          var tdw = bold.widthOfTextAtSize(winAnsi(dw), 7);
-          write(dw, ux + uw / 2 - tdw / 2, yOf(uy + 9), 7, bold, GOLD);
-          var hw = bold.widthOfTextAtSize(winAnsi(dh), 7);
-          page.drawText(winAnsi(dh), {
-            x: ux + 8,
-            y: yOf(uy + uh / 2) - hw / 2,
-            size: 7,
-            font: bold,
-            color: GOLD,
-            rotate: degrees(90),
-          });
+        if (uh >= 40 && uw >= 36) {
+          if (dw) {
+            var tdw = bold.widthOfTextAtSize(winAnsi(dw), 7);
+            write(dw, ux + Math.max(2, uw / 2 - tdw / 2), yOf(uy + 10), 7, bold, GOLD);
+          }
+          if (dh && uh >= 48) {
+            var hw = bold.widthOfTextAtSize(winAnsi(dh), 7);
+            page.drawText(winAnsi(dh), {
+              x: ux + 9,
+              y: yOf(uy + uh / 2) - hw / 2,
+              size: 7,
+              font: bold,
+              color: GOLD,
+              rotate: degrees(90),
+            });
+          }
+        } else if (dw || dh) {
+          var pair = dw && dh ? dw + " x " + dh : dw || dh;
+          var psz = 6.5;
+          var pw = bold.widthOfTextAtSize(winAnsi(pair), psz);
+          write(
+            pair,
+            ux + Math.max(2, uw / 2 - pw / 2),
+            yOf(uy + uh / 2 + 12),
+            psz,
+            bold,
+            GOLD
+          );
         }
       }
     });
@@ -1934,9 +1965,9 @@
         rect(colX - 4, rowTop - 10, chartW + 4, rowH - 2, { fill: rgb(0.96, 0.97, 0.99) });
       }
       write("U" + u.index, cols[0], yOf(rowTop), 9, bold, NAVY);
-      write(labelName(u.label), cols[1], yOf(rowTop), 8, bold, NAVY);
-      write(dimLabel(u, "w"), cols[2], yOf(rowTop), 9, font, INK);
-      write(dimLabel(u, "h"), cols[3], yOf(rowTop), 9, font, INK);
+      write(labelShort(u.label), cols[1], yOf(rowTop), 8, bold, NAVY);
+      write(dimLabel(u, "w") || "—", cols[2], yOf(rowTop), 9, font, INK);
+      write(dimLabel(u, "h") || "—", cols[3], yOf(rowTop), 9, font, INK);
       page.drawLine({
         start: { x: colX, y: yOf(rowTop + 16) },
         end: { x: pageW - margin, y: yOf(rowTop + 16) },
@@ -1955,13 +1986,12 @@
     flat.mullions.forEach(function (m) {
       if (rowTop > pageH - footerH - 20) return;
       write(
-        m.stock.nominal +
-          " " +
-          (m.axis === "v" ? "vert" : "horiz") +
+        "M" +
+          m.index +
           "  " +
-          formatIn(m.stock.tIn) +
-          "  x  " +
-          formatIn(m.axis === "v" ? m.h : m.w),
+          m.stock.nominal +
+          "  " +
+          (m.axis === "v" ? "vert" : "horiz"),
         colX,
         yOf(rowTop),
         8
