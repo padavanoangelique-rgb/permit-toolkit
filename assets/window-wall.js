@@ -64,7 +64,15 @@
   }
   function formatIn(inches) {
     if (!isFinite(inches)) return "—";
-    return Number(inches.toFixed(2)) + '"';
+    var sign = inches < 0 ? "-" : "";
+    var total16 = Math.round(Math.abs(inches) * 16);
+    var whole = Math.floor(total16 / 16);
+    var frac16 = total16 % 16;
+    if (frac16 === 0) return sign + whole + '"';
+    var g = gcd(frac16, 16);
+    var frac = frac16 / g + "/" + 16 / g;
+    if (whole === 0) return sign + frac + '"';
+    return sign + whole + " " + frac + '"';
   }
   function formatBoth(inches) {
     return formatIn(inches) + "  (" + formatFtIn(inches) + ")";
@@ -72,8 +80,16 @@
   function formatPair(w, h) {
     return formatFtIn(w) + " x " + formatFtIn(h);
   }
+  function formatDraw(inches) {
+    return formatIn(inches);
+  }
   function formatDim(inches) {
     return unitMode === "in" ? formatIn(inches) : formatFtIn(inches);
+  }
+  function parseOpening(raw) {
+    var a = parseLength(raw, unitMode);
+    if (a != null) return a;
+    return parseLength(raw, unitMode === "in" ? "ft" : "in");
   }
   function formatPairDim(w, h) {
     return formatDim(w) + " x " + formatDim(h);
@@ -396,11 +412,11 @@
   var selection = null;
   var drag = null;
   var pdfUrl = null;
-  var unitMode = "ft";
+  var unitMode = "in";
   var past = [];
   var MAX_UNDO = 60;
   try {
-    var saved = localStorage.getItem("pt_ww_unit_mode");
+    var saved = localStorage.getItem("pt_ww_unit_mode_v2");
     if (saved === "in" || saved === "ft") unitMode = saved;
   } catch (e) {}
 
@@ -771,8 +787,8 @@
   }
 
   function commitOpening() {
-    var w = parseLength($("openW").value);
-    var h = parseLength($("openH").value);
+    var w = parseOpening($("openW").value);
+    var h = parseOpening($("openH").value);
     if (w == null || h == null) {
       $("openW").value = formatDim(state.opening.wIn);
       $("openH").value = formatDim(state.opening.hIn);
@@ -793,7 +809,7 @@
   function setUnitMode(next) {
     unitMode = next === "in" ? "in" : "ft";
     try {
-      localStorage.setItem("pt_ww_unit_mode", unitMode);
+      localStorage.setItem("pt_ww_unit_mode_v2", unitMode);
     } catch (e) {}
     var ft = $("modeFt");
     var inn = $("modeIn");
@@ -953,10 +969,10 @@
         );
       }
       if (w > 52) {
-        unitHDim(gEl, x, y + 12, w, formatDim(u.w));
+        unitHDim(gEl, x, y + 12, w, formatDraw(u.w));
       }
       if (h > 52) {
-        unitVDim(gEl, x + 12, y, h, formatDim(u.h));
+        unitVDim(gEl, x + 12, y, h, formatDraw(u.h));
       }
       gEl.addEventListener("pointerdown", function (e) {
         e.stopPropagation();
@@ -1107,7 +1123,7 @@
       svg.appendChild(gEl);
     });
 
-    dimLine(svg, ox, oy - 16, ox + drawW, oy - 16, "Opening " + formatDim(ow));
+    dimLine(svg, ox, oy - 16, ox + drawW, oy - 16, "Opening " + formatDraw(ow));
     /* height label */
     svg.appendChild(
       el(
@@ -1122,7 +1138,7 @@
           "font-family": "General Sans, sans-serif",
           transform: "rotate(-90 " + (ox - 10) + " " + (oy + drawH / 2) + ")",
         },
-        "Opening " + formatDim(oh)
+        "Opening " + formatDraw(oh)
       )
     );
 
@@ -1313,7 +1329,7 @@
           ? m.parentRect.w - (m.x - m.parentRect.x) - m.w
           : m.parentRect.h - (m.y - m.parentRect.y) - m.h;
       live.style.display = "block";
-      live.textContent = formatDim(a) + "  /  " + formatDim(b) + "   snap 1\"";
+      live.textContent = formatDraw(a) + "  /  " + formatDraw(b) + "   snap 1\"";
     }
     draw();
   }
@@ -1525,12 +1541,12 @@
         var tw1 = bold.widthOfTextAtSize(winAnsi(t1), sz);
         write(t1, ux + uw / 2 - tw1 / 2, yOf(uy + uh / 2 + 3), sz, bold, NAVY);
         if (uw > 48) {
-          var dw = formatFtIn(u.w);
+          var dw = formatIn(u.w);
           var tdw = font.widthOfTextAtSize(winAnsi(dw), 7);
           write(dw, ux + uw / 2 - tdw / 2, yOf(uy + 11), 7, bold, GOLD);
         }
         if (uh > 48) {
-          var dh = formatFtIn(u.h);
+          var dh = formatIn(u.h);
           write(dh, ux + 10, yOf(uy + uh / 2), 7, bold, GOLD);
         }
       }
@@ -1562,19 +1578,18 @@
     });
     rect(ox, oy, drawW, drawH, { stroke: NAVY, thickness: 1.4 });
 
-    write("OPENING  " + formatFtIn(ow) + " x " + formatFtIn(oh), ox, yOf(oy - 14), 8, bold, NAVY);
+    write("OPENING  " + formatIn(ow) + " x " + formatIn(oh), ox, yOf(oy - 14), 8, bold, NAVY);
 
     var colX = chartX;
     write("OPENING", colX, yOf(headerH + 8), 8, bold, GOLD);
-    write(formatFtIn(ow) + " x " + formatFtIn(oh), colX, yOf(headerH + 22), 11, bold, NAVY);
-    write(formatIn(ow) + " x " + formatIn(oh), colX, yOf(headerH + 36), 8, font, MUTED);
-    write("BUCKS  " + state.buckStock.nominal + "  " + formatIn(state.buckStock.tIn) + " all around", colX, yOf(headerH + 52), 8);
-    write("POCKET  " + formatFtIn(flat.pocket.w) + " x " + formatFtIn(flat.pocket.h), colX, yOf(headerH + 66), 8);
+    write(formatIn(ow) + " x " + formatIn(oh), colX, yOf(headerH + 22), 11, bold, NAVY);
+    write("BUCKS  " + state.buckStock.nominal + "  " + formatIn(state.buckStock.tIn) + " all around", colX, yOf(headerH + 36), 8);
+    write("POCKET  " + formatIn(flat.pocket.w) + " x " + formatIn(flat.pocket.h), colX, yOf(headerH + 50), 8);
 
-    write("UNIT SCHEDULE", colX, yOf(headerH + 88), 8, bold, GOLD);
-    var tableTop = headerH + 102;
+    write("UNIT SCHEDULE", colX, yOf(headerH + 72), 8, bold, GOLD);
+    var tableTop = headerH + 86;
     var cols = [colX, colX + 28, colX + 78, colX + 138];
-    ["#", "Type", "W", "H"].forEach(function (h, i) {
+    ["#", "Type", "W in", "H in"].forEach(function (h, i) {
       write(h, cols[i], yOf(tableTop), 8, bold, MUTED);
     });
     page.drawLine({
@@ -1584,7 +1599,7 @@
       color: GOLD,
     });
     var rowTop = tableTop + 22;
-    var rowH = 28;
+    var rowH = 22;
     if (flat.units.length === 0) {
       write("No units placed.", colX, yOf(rowTop), 9, font, MUTED);
       rowTop += rowH;
@@ -1592,14 +1607,12 @@
     flat.units.forEach(function (u, i) {
       if (rowTop > pageH - footerH - 70) return;
       if (i % 2 === 0) {
-        rect(colX - 4, rowTop - 12, chartW + 4, rowH - 2, { fill: rgb(0.96, 0.97, 0.99) });
+        rect(colX - 4, rowTop - 10, chartW + 4, rowH - 2, { fill: rgb(0.96, 0.97, 0.99) });
       }
       write("U" + u.index, cols[0], yOf(rowTop), 9, bold, NAVY);
-      write(labelName(u.label), cols[1], yOf(rowTop - 2), 8, bold, NAVY);
-      write(formatFtIn(u.w), cols[2], yOf(rowTop - 2), 8, font, INK);
-      write(formatFtIn(u.h), cols[3], yOf(rowTop - 2), 8, font, INK);
-      write(formatIn(u.w), cols[2], yOf(rowTop + 10), 7, font, MUTED);
-      write(formatIn(u.h), cols[3], yOf(rowTop + 10), 7, font, MUTED);
+      write(labelName(u.label), cols[1], yOf(rowTop), 8, bold, NAVY);
+      write(formatIn(u.w), cols[2], yOf(rowTop), 9, font, INK);
+      write(formatIn(u.h), cols[3], yOf(rowTop), 9, font, INK);
       page.drawLine({
         start: { x: colX, y: yOf(rowTop + 16) },
         end: { x: pageW - margin, y: yOf(rowTop + 16) },
