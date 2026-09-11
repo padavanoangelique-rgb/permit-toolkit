@@ -454,7 +454,7 @@
 
   function initialState() {
     return {
-      opening: { wIn: 120, hIn: 120 },
+      opening: { wIn: 120, hIn: 120, wRaw: '120"', hRaw: '120"' },
       buckStock: stockById("2x4"),
       mullionStock: stockById("2x4"),
       tree: { kind: "gap" },
@@ -465,7 +465,12 @@
     switch (action.type) {
       case "setOpening":
         return Object.assign({}, state, {
-          opening: { wIn: Math.max(12, action.wIn), hIn: Math.max(12, action.hIn) },
+          opening: {
+            wIn: Math.max(1, action.wIn),
+            hIn: Math.max(1, action.hIn),
+            wRaw: action.wRaw != null ? action.wRaw : state.opening.wRaw,
+            hRaw: action.hRaw != null ? action.hRaw : state.opening.hRaw,
+          },
         });
       case "setBuckStock":
         return Object.assign({}, state, { buckStock: action.stock });
@@ -701,7 +706,7 @@
     var side =
       '<div class="ww-sec">Live sizes</div>' +
       "<dl>" +
-      row("Opening", formatPairDim(state.opening.wIn, state.opening.hIn)) +
+      row("Opening", (state.opening.wRaw || formatDim(state.opening.wIn)) + " x " + (state.opening.hRaw || formatDim(state.opening.hIn))) +
       row("Bucks", state.buckStock.nominal + " " + formatIn(state.buckStock.tIn) + " x4") +
       row("Pocket", formatPairDim(pocket.w, pocket.h)) +
       row(
@@ -911,8 +916,8 @@
       } else if (act === "reset") {
         dispatch({ type: "reset" });
         selection = null;
-        $("openW").value = formatDim(120);
-        $("openH").value = formatDim(120);
+        $("openW").value = '120"';
+        $("openH").value = '120"';
         render();
       } else if (act === "pdf") {
         makePdf();
@@ -1004,16 +1009,22 @@
   }
 
   function commitOpening() {
-    var w = parseOpening($("openW").value);
-    var h = parseOpening($("openH").value);
+    var wRaw = $("openW").value.trim();
+    var hRaw = $("openH").value.trim();
+    var w = parseOpening(wRaw);
+    var h = parseOpening(hRaw);
     if (w == null || h == null) {
-      $("openW").value = formatDim(state.opening.wIn);
-      $("openH").value = formatDim(state.opening.hIn);
+      $("openW").value = state.opening.wRaw || formatDim(state.opening.wIn);
+      $("openH").value = state.opening.hRaw || formatDim(state.opening.hIn);
       return;
     }
-    dispatch({ type: "setOpening", wIn: w, hIn: h });
-    $("openW").value = formatDim(w);
-    $("openH").value = formatDim(h);
+    dispatch({
+      type: "setOpening",
+      wIn: w,
+      hIn: h,
+      wRaw: wRaw,
+      hRaw: hRaw,
+    });
   }
   $("openW").addEventListener("blur", commitOpening);
   $("openH").addEventListener("blur", commitOpening);
@@ -1382,7 +1393,7 @@
       svg.appendChild(gEl);
     });
 
-    dimLine(svg, ox, oy - 16, ox + drawW, oy - 16, "Opening " + formatDraw(ow));
+    dimLine(svg, ox, oy - 16, ox + drawW, oy - 16, "Opening " + (state.opening.wRaw || formatDraw(ow)));
     /* height label */
     svg.appendChild(
       el(
@@ -1397,7 +1408,7 @@
           "font-family": "General Sans, sans-serif",
           transform: "rotate(-90 " + (ox - 10) + " " + (oy + drawH / 2) + ")",
         },
-        "Opening " + formatDraw(oh)
+        "Opening " + (state.opening.hRaw || formatDraw(oh))
       )
     );
 
@@ -1613,8 +1624,8 @@
       }
       var ow = $("openW");
       var oh = $("openH");
-      if (ow && document.activeElement !== ow) ow.value = formatDim(state.opening.wIn);
-      if (oh && document.activeElement !== oh) oh.value = formatDim(state.opening.hIn);
+      if (ow && document.activeElement !== ow) ow.value = state.opening.wRaw || formatDim(state.opening.wIn);
+      if (oh && document.activeElement !== oh) oh.value = state.opening.hRaw || formatDim(state.opening.hIn);
       var flat = flatten(state);
       renderChrome(flat);
       draw();
@@ -1884,11 +1895,18 @@
     });
     rect(ox, oy, drawW, drawH, { stroke: NAVY, thickness: 1.4 });
 
-    write("OPENING  " + formatIn(ow) + " x " + formatIn(oh), ox, yOf(oy - 14), 8, bold, NAVY);
+    write(
+      "OPENING  " + (state.opening.wRaw || formatIn(ow)) + " x " + (state.opening.hRaw || formatIn(oh)),
+      ox,
+      yOf(oy - 14),
+      8,
+      bold,
+      NAVY
+    );
 
     var colX = chartX;
     write("OPENING", colX, yOf(headerH + 8), 8, bold, GOLD);
-    write(formatIn(ow) + " x " + formatIn(oh), colX, yOf(headerH + 22), 11, bold, NAVY);
+    write((state.opening.wRaw || formatIn(ow)) + " x " + (state.opening.hRaw || formatIn(oh)), colX, yOf(headerH + 22), 11, bold, NAVY);
     write("BUCKS  " + state.buckStock.nominal + "  " + formatIn(state.buckStock.tIn) + " all around", colX, yOf(headerH + 36), 8);
     write("POCKET  " + formatIn(flat.pocket.w) + " x " + formatIn(flat.pocket.h), colX, yOf(headerH + 50), 8);
 
