@@ -255,6 +255,36 @@
     var span = axis === "v" ? unit.w : unit.h;
     return span >= 2 * MIN_UNIT + stock.tIn;
   }
+  function canSplitThirds(unit, axis, stock) {
+    var span = axis === "v" ? unit.w : unit.h;
+    return span >= 3 * MIN_UNIT + 2 * stock.tIn;
+  }
+  function thirdsNode(unit, axis, stock, span) {
+    var t = stock.tIn;
+    var piece = (span - 2 * t) / 3;
+    var inner = span - t;
+    var aSize = piece;
+    var bSize = inner - aSize;
+    return {
+      kind: "split",
+      id: uid("m"),
+      axis: axis,
+      stock: stock,
+      aWeight: Math.max(0.01, aSize),
+      bWeight: Math.max(0.01, bSize),
+      a: { kind: "unit", id: unit.id, label: unit.label },
+      b: {
+        kind: "split",
+        id: uid("m"),
+        axis: axis,
+        stock: stock,
+        aWeight: 1,
+        bWeight: 1,
+        a: { kind: "unit", id: uid("u"), label: unit.label },
+        b: { kind: "unit", id: uid("u"), label: unit.label },
+      },
+    };
+  }
   function leftoverArea(flat) {
     return flat.gaps.reduce(function (s, g) {
       return s + g.w * g.h;
@@ -352,6 +382,21 @@
           b: { kind: "unit", id: uid("u"), label: u.label },
         };
         return Object.assign({}, state, { tree: setNode(state.tree, action.path, next) });
+      }
+      case "splitThirds": {
+        var u3 = getNode(state.tree, action.path);
+        if (!u3 || u3.kind !== "unit") return state;
+        var flat3 = flatten(state);
+        var unitRect = null;
+        for (var i3 = 0; i3 < flat3.units.length; i3++) {
+          if (samePath(flat3.units[i3].path, action.path)) unitRect = flat3.units[i3];
+        }
+        if (!unitRect) return state;
+        if (!canSplitThirds(unitRect, action.axis, state.mullionStock)) return state;
+        var span3 = action.axis === "v" ? unitRect.w : unitRect.h;
+        return Object.assign({}, state, {
+          tree: setNode(state.tree, action.path, thirdsNode(u3, action.axis, state.mullionStock, span3)),
+        });
       }
       case "setLabel": {
         var un = getNode(state.tree, action.path);
@@ -518,9 +563,12 @@
   function renderChrome(flat) {
     var su = selectedUnit(flat);
     var sm = selectedMullion(flat);
+    var target = su || (flat.units.length === 1 ? flat.units[0] : null);
     var canAdd = flat.gaps.length > 0;
-    var canV = su ? canSplitUnit(su, "v", state.mullionStock) : false;
-    var canH = su ? canSplitUnit(su, "h", state.mullionStock) : false;
+    var canV = target ? canSplitUnit(target, "v", state.mullionStock) : false;
+    var canH = target ? canSplitUnit(target, "h", state.mullionStock) : false;
+    var can3V = target ? canSplitThirds(target, "v", state.mullionStock) : false;
+    var can3H = target ? canSplitThirds(target, "h", state.mullionStock) : false;
     var leftover = leftoverArea(flat);
     var pocket = flat.pocket;
 
@@ -528,7 +576,9 @@
       toolBtn("Add unit", "add", !canAdd) +
       toolBtn("Split vertical", "splitV", !canV) +
       toolBtn("Split horizontal", "splitH", !canH) +
-      '<p class="ww-hint">Click a mullion to set 1x4 / 2x4 on that bar only. Drag to size. Mix stocks on larger walls.</p>' +
+      toolBtn("Split into 3 across", "split3V", !can3V) +
+      toolBtn("Split into 3 stacked", "split3H", !can3H) +
+      '<p class="ww-hint">Split into 3 makes two mullions and three equal units. Click a mullion to set 1x4 / 2x4 on that bar only. Drag to size.</p>' +
       stockPicker(sm ? "This mullion only" : "Next mullion stock", (sm ? sm.stock : state.mullionStock).id, "m:") +
       stockPicker("Buck stock", state.buckStock.id, "b:") +
       toolBtn("Delete", "delete", !selection, "danger") +
@@ -650,6 +700,12 @@
       '<button type="button" data-act="splitH"' +
       (canH ? "" : " disabled") +
       ">⊟<span>Split —</span></button>" +
+      '<button type="button" data-act="split3V"' +
+      (can3V ? "" : " disabled") +
+      ">|||<span>3 across</span></button>" +
+      '<button type="button" data-act="split3H"' +
+      (can3H ? "" : " disabled") +
+      ">≡<span>3 stacked</span></button>" +
       '<button type="button" data-act="delete"' +
       (selection ? "" : " disabled") +
       ">✕<span>Delete</span></button>" +
@@ -701,12 +757,19 @@
           selection = { kind: "unit", path: flat.gaps[0].path };
           render();
         }
-      } else if (act === "splitV" || act === "splitH") {
-        if (!selection || selection.kind !== "unit") return;
-        var axis = act === "splitV" ? "v" : "h";
-        var splitPath = selection.path.slice();
-        selection = { kind: "mullion", path: splitPath };
-        dispatch({ type: "split", path: splitPath, axis: axis });
+      } else if (act === "splitV" || act === "splitH" || act === "split3V" || act === "split3H") {
+        var unitPath = null;
+        if (selection && selection.kind === "unit") unitPath = selection.path.slice();
+        else if (flat.units.length === 1) unitPath = flat.units[0].path.slice();
+        if (!unitPath) return;
+        var axis = act === "splitH" || act === "split3H" ? "h" : "v";
+        if (act === "split3V" || act === "split3H") {
+          selection = { kind: "unit", path: unitPath.concat([0]) };
+          dispatch({ type: "splitThirds", path: unitPath, axis: axis });
+        } else {
+          selection = { kind: "mullion", path: unitPath };
+          dispatch({ type: "split", path: unitPath, axis: axis });
+        }
       } else if (act === "delete") {
         if (!selection) return;
         if (selection.kind === "unit") dispatch({ type: "deleteUnit", path: selection.path });
