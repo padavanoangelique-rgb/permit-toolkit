@@ -301,64 +301,71 @@
     var clamped = Math.min(Math.max(aSize, MIN_UNIT), Math.max(MIN_UNIT, maxA));
     return { aWeight: Math.max(0.01, clamped), bWeight: Math.max(0.01, span - t - clamped) };
   }
-  function weightsForChildSizeExact(m, child, newSize) {
-    var t = m.stock.tIn;
-    var span = m.axis === "v" ? m.parentRect.w : m.parentRect.h;
-    var aSize = child === 0 ? newSize : span - t - newSize;
-    return clampSplitSizes(span, t, aSize);
+  function pathKey(p) {
+    return (p || []).join(".");
+  }
+  function geomMap(flat) {
+    var g = {};
+    function add(item) {
+      g[pathKey(item.path)] = { w: item.w, h: item.h };
+    }
+    flat.units.forEach(add);
+    flat.gaps.forEach(add);
+    return g;
+  }
+  function measureNode(node, path, axis, desired, geom) {
+    if (!node) return MIN_UNIT;
+    var key = pathKey(path);
+    if (node.kind === "unit" || node.kind === "gap") {
+      if (Object.prototype.hasOwnProperty.call(desired, key)) return desired[key];
+      var box = geom[key];
+      if (!box) return MIN_UNIT;
+      return axis === "v" ? box.w : box.h;
+    }
+    if (node.kind !== "split") return MIN_UNIT;
+    var aS = measureNode(node.a, path.concat([0]), axis, desired, geom);
+    var bS = measureNode(node.b, path.concat([1]), axis, desired, geom);
+    if (node.axis === axis) return aS + node.stock.tIn + bS;
+    return Math.max(aS, bS);
+  }
+  function relockAxis(node, path, axis, desired, geom) {
+    if (!node || node.kind !== "split") return node;
+    var a = relockAxis(node.a, path.concat([0]), axis, desired, geom);
+    var b = relockAxis(node.b, path.concat([1]), axis, desired, geom);
+    var next = Object.assign({}, node, { a: a, b: b });
+    if (node.axis === axis) {
+      next.aWeight = Math.max(0.01, measureNode(a, path.concat([0]), axis, desired, geom));
+      next.bWeight = Math.max(0.01, measureNode(b, path.concat([1]), axis, desired, geom));
+    }
+    return next;
   }
   function applyUnitSize(state, path, axis, size) {
     size = Math.max(MIN_UNIT, snapEighth(size));
     var flat = flatten(state);
-    var unit = null;
+    var found = false;
     for (var i = 0; i < flat.units.length; i++) {
-      if (samePath(flat.units[i].path, path)) unit = flat.units[i];
+      if (samePath(flat.units[i].path, path)) found = true;
     }
-    if (!unit) return state;
-    var current = axis === "v" ? unit.w : unit.h;
-    if (Math.abs(current - size) < 0.0005) return state;
-    var anc = ancestorSplitOnAxis(state.tree, path, axis);
-    if (!anc) {
-      var delta0 = size - current;
-      return Object.assign({}, state, {
-        opening: {
-          wIn: Math.max(12, state.opening.wIn + (axis === "v" ? delta0 : 0)),
-          hIn: Math.max(12, state.opening.hIn + (axis === "h" ? delta0 : 0)),
-        },
-      });
-    }
-    var mull = null;
-    for (var j = 0; j < flat.mullions.length; j++) {
-      if (samePath(flat.mullions[j].path, anc.splitPath)) mull = flat.mullions[j];
-    }
-    if (!mull) return state;
-    var t = mull.stock.tIn;
-    var span = axis === "v" ? mull.parentRect.w : mull.parentRect.h;
-    var next = state;
-    if (size > span - t - MIN_UNIT + 0.001) {
-      var grow = size - current;
-      next = Object.assign({}, state, {
-        opening: {
-          wIn: Math.max(12, state.opening.wIn + (axis === "v" ? grow : 0)),
-          hIn: Math.max(12, state.opening.hIn + (axis === "h" ? grow : 0)),
-        },
-      });
-      flat = flatten(next);
-      mull = null;
-      for (var k = 0; k < flat.mullions.length; k++) {
-        if (samePath(flat.mullions[k].path, anc.splitPath)) mull = flat.mullions[k];
-      }
-      if (!mull) return next;
-    }
-    var wts = weightsForChildSizeExact(mull, anc.child, size);
-    var node = getNode(next.tree, anc.splitPath);
-    if (!node || node.kind !== "split") return next;
-    return Object.assign({}, next, {
-      tree: setNode(
-        next.tree,
-        anc.splitPath,
-        Object.assign({}, node, { aWeight: wts.aWeight, bWeight: wts.bWeight })
-      ),
+    if (!found) return state;
+    var geom = geomMap(flat);
+    var desired = {};
+    var share = !ancestorSplitOnAxis(state.tree, path, axis);
+    flat.units.forEach(function (u) {
+      var key = pathKey(u.path);
+      var cur = axis === "v" ? u.w : u.h;
+      if (samePath(u.path, path)) desired[key] = size;
+      else if (share && !ancestorSplitOnAxis(state.tree, u.path, axis)) desired[key] = size;
+      else desired[key] = snapEighth(cur);
+    });
+    var tree = relockAxis(state.tree, [], axis, desired, geom);
+    var rootSpan = measureNode(tree, [], axis, desired, geom);
+    var bucks = state.buckStock.tIn * 2;
+    return Object.assign({}, state, {
+      tree: tree,
+      opening: {
+        wIn: axis === "v" ? Math.max(12, rootSpan + bucks) : state.opening.wIn,
+        hIn: axis === "h" ? Math.max(12, rootSpan + bucks) : state.opening.hIn,
+      },
     });
   }
   function weightsFromMullionCenter(m, pointer) {
@@ -664,7 +671,7 @@
           : "Filled"
       ) +
       "</dl>" +
-      '<p class="ww-hint">Unit sizes = opening − bucks − mullions. Type exact W and H on a unit to keep this layout.</p>' +
+      '<p class="ww-hint">Typed W and H stick. Other openings keep their sizes. The overall opening updates to fit.</p>' +
       '<div class="ww-sec">Selected</div>';
 
     if (su) {
@@ -681,7 +688,7 @@
         '<div class="field"><label>H</label><input id="unitH" type="text" inputmode="decimal" value="' +
         esc(formatDim(su.h)) +
         '"></div></div>' +
-        '<p class="ww-hint">Type exact size (48, 48", or 4\'-0"). Layout stays. The other unit on that split takes leftover. Opening grows only if needed.</p>';
+        '<p class="ww-hint">Type the exact size. That unit keeps it. Other units do not change. The opening grows or shrinks to fit.</p>';
     } else if (sm) {
       side +=
         "<div style=\"font-family:General Sans,sans-serif;font-size:18px;font-weight:600;\">M" +
