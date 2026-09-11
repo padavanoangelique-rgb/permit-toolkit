@@ -202,10 +202,6 @@
   }
   function flatten(state) {
     var pocket = pocketOf(state);
-    var lw = lockOf(state.tree, "v");
-    var lh = lockOf(state.tree, "h");
-    if (lw != null) pocket = { w: lw, h: pocket.h };
-    if (lh != null) pocket = { w: pocket.w, h: lh };
     var units = [];
     var mullions = [];
     var gaps = [];
@@ -236,24 +232,13 @@
       var t = node.stock.tIn;
       var span = node.axis === "v" ? rect.w : rect.h;
       var inner = Math.max(0, span - t);
+      var tw = node.aWeight + node.bWeight;
+      var aW = tw <= 0 ? inner / 2 : inner * (node.aWeight / tw);
+      var bW = inner - aW;
       var aLock = lockOf(node.a, node.axis);
       var bLock = lockOf(node.b, node.axis);
-      var aSize;
-      var bSize;
-      if (aLock != null && bLock != null) {
-        aSize = aLock;
-        bSize = bLock;
-      } else if (aLock != null) {
-        aSize = Math.min(Math.max(aLock, 0), inner);
-        bSize = inner - aSize;
-      } else if (bLock != null) {
-        bSize = Math.min(Math.max(bLock, 0), inner);
-        aSize = inner - bSize;
-      } else {
-        var tw = node.aWeight + node.bWeight;
-        aSize = tw <= 0 ? inner / 2 : inner * (node.aWeight / tw);
-        bSize = inner - aSize;
-      }
+      var aSize = aLock != null ? aLock : aW;
+      var bSize = bLock != null ? bLock : bW;
       if (node.axis === "v") {
         mullions.push({
           type: "mullion",
@@ -391,43 +376,12 @@
     size = Math.max(1, Number(size));
     if (!isFinite(size)) return state;
     raw = String(raw || "").trim();
-    var flat = flatten(state);
-    var found = false;
-    for (var i = 0; i < flat.units.length; i++) {
-      if (samePath(flat.units[i].path, path)) found = true;
-    }
-    if (!found) return state;
-    var geom = geomMap(flat);
-    var desired = {};
+    var n = getNode(state.tree, path);
+    if (!n || n.kind !== "unit") return state;
     var stampKeys = {};
-    var share = !ancestorSplitOnAxis(state.tree, path, axis);
     stampKeys[pathKey(path)] = { size: size, raw: raw };
-    flat.units.forEach(function (u) {
-      var key = pathKey(u.path);
-      var nodeU = getNode(state.tree, u.path);
-      if (samePath(u.path, path)) {
-        desired[key] = size;
-      } else if (share && !ancestorSplitOnAxis(state.tree, u.path, axis)) {
-        desired[key] = size;
-        stampKeys[key] = { size: size, raw: raw };
-      } else if (axis === "v" && nodeU && nodeU.lockW != null) {
-        desired[key] = Number(nodeU.lockW);
-      } else if (axis === "h" && nodeU && nodeU.lockH != null) {
-        desired[key] = Number(nodeU.lockH);
-      } else {
-        desired[key] = axis === "v" ? u.w : u.h;
-      }
-    });
-    var tree = relockAxis(state.tree, [], axis, desired, geom);
-    tree = stampAxisLock(tree, [], axis, stampKeys);
-    var rootSpan = measureNode(tree, [], axis, desired, geom);
-    var bucks = state.buckStock.tIn * 2;
     return Object.assign({}, state, {
-      tree: tree,
-      opening: {
-        wIn: axis === "v" ? Math.max(12, rootSpan + bucks) : state.opening.wIn,
-        hIn: axis === "h" ? Math.max(12, rootSpan + bucks) : state.opening.hIn,
-      },
+      tree: stampAxisLock(state.tree, [], axis, stampKeys),
     });
   }
   function stampAxisLock(node, path, axis, stampKeys) {
@@ -757,7 +711,7 @@
           : "Filled"
       ) +
       "</dl>" +
-      '<p class="ww-hint">Typed W and H stick. Other openings keep their sizes. The overall opening updates to fit.</p>' +
+      '<p class="ww-hint">Opening W and H stay as you typed them. Unit sizes are labels you type — nothing is added or auto-calculated.</p>' +
       '<div class="ww-sec">Selected</div>';
 
     if (su) {
@@ -774,7 +728,7 @@
         '<div class="field"><label>H</label><input id="unitH" type="text" inputmode="decimal" value="' +
         esc(dimLabel(su, "h")) +
         '"></div></div>' +
-        '<p class="ww-hint">Type the size you want. It prints and displays exactly as entered. Other units stay as they are.</p>';
+        '<p class="ww-hint">Type the unit size. It stays exactly as entered. Opening width and height do not change.</p>';
     } else if (sm) {
       side +=
         "<div style=\"font-family:General Sans,sans-serif;font-size:18px;font-weight:600;\">M" +
@@ -1832,8 +1786,8 @@
     write("Permit Toolkit  -  planning aid, not for construction", 20, pageH - 32, 8, font, GOLD);
     write(today, pageW - 20 - font.widthOfTextAtSize(today, 9), pageH - 22, 9, font, CREAM);
 
-    var ow = flat.pocket.w + tBuck * 2,
-      oh = flat.pocket.h + tBuck * 2;
+    var ow = state.opening.wIn,
+      oh = state.opening.hIn;
     var margin = 20;
     var headerH = 48;
     var footerH = 26;
