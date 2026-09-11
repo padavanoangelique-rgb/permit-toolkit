@@ -30,23 +30,80 @@
     try {
       var d = new Date();
       d.setTime(d.getTime() + days*24*60*60*1000);
-      // Domain-less cookie so it works on preview + prod. SameSite=Lax so top-level nav sends it.
-      document.cookie = name + '=' + encodeURIComponent(value) + '; expires=' + d.toUTCString() + '; path=/; SameSite=Lax';
+      var parts = name + '=' + encodeURIComponent(value) + '; expires=' + d.toUTCString() + '; path=/; SameSite=Lax';
+      if (location.protocol === 'https:') parts += '; Secure';
+      document.cookie = parts;
+      var host = location.hostname || '';
+      if (host === 'permittoolkit.com' || host.slice(-18) === '.permittoolkit.com') {
+        document.cookie = parts + '; domain=.permittoolkit.com';
+      }
     } catch(e){}
   }
   function isCaptured(){
-    try { if (localStorage.getItem(LS_KEY)) return true; } catch(e){}
+    try {
+      if (localStorage.getItem(LS_KEY)) return true;
+      if (localStorage.getItem('pt_lead_captured')) return true;
+    } catch(e){}
     if (readCookie(COOKIE_KEY)) return true;
+    if (readCookie('pt_lead')) return true;
     return false;
   }
   function markCaptured(email){
-    var payload = JSON.stringify({email:email, at:new Date().toISOString()});
+    var payload = JSON.stringify({email:email || '', at:new Date().toISOString()});
     try { localStorage.setItem(LS_KEY, payload); } catch(e){}
+    try { localStorage.setItem('pt_lead_captured', '1'); } catch(e){}
     writeCookie(COOKIE_KEY, '1', COOKIE_DAYS);
+    writeCookie('pt_lead', '1', COOKIE_DAYS);
+  }
+  function repairCapture(){
+    if (!isCaptured()) return;
+    var email = '';
+    try {
+      var raw = localStorage.getItem(LS_KEY);
+      if (raw) email = JSON.parse(raw).email || '';
+    } catch(e){}
+    markCaptured(email);
+  }
+
+  var SHEET_WEBHOOK = '';
+  var SHEET_ID = '1OO_v9GZftPlIgReWTtd92tcz_WT--VBr1ZDcvnP17dY';
+
+  function postSheet(payload){
+    if (!SHEET_WEBHOOK) return;
+    try {
+      fetch(SHEET_WEBHOOK, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          email: payload.email,
+          role: payload.role || '',
+          source: payload.source || 'permit-toolkit',
+          first_tool: payload.first_tool || '',
+          user_agent: payload.user_agent || '',
+          referrer: payload.referrer || ''
+        })
+      });
+    } catch(e){}
   }
 
   function postLead(payload){
     // Call the security-definer RPC. Function handles dedup and returns {ok:true}.
+    postSheet(payload);
+    try {
+      fetch('https://permitaio.com/api/toolkit-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: payload.email,
+          role: payload.role || '',
+          source: payload.source || 'permit-toolkit',
+          first_tool: payload.first_tool || '',
+          user_agent: payload.user_agent || '',
+          referrer: payload.referrer || ''
+        })
+      }).catch(function(){});
+    } catch(e){}
     return fetch(SUPA_URL + '/rest/v1/rpc/' + CAPTURE_RPC, {
       method: 'POST',
       headers: {
@@ -277,8 +334,8 @@
       '<div class="pt-gate" role="dialog" aria-modal="true" aria-labelledby="pt-gate-title">' +
         '<div class="pt-gate-card">' +
           '<div class="pt-gate-badge">FREE FOREVER</div>' +
-          '<h2 id="pt-gate-title">Enter email to use free tools</h2>' +
-          '<p class="pt-gate-sub">One email unlocks all 12 tools — forever. No login, no password. Built by the team behind <b>PermitAIO</b>.</p>' +
+          '<h2 id="pt-gate-title">One email. Unlimited use.</h2>' +
+          '<p class="pt-gate-sub">Enter once and every tool stays unlocked on this browser — forever. No login, no password. Built by the team behind <b>PermitAIO</b>.</p>' +
           '<form class="pt-gate-form" id="ptGateForm" novalidate>' +
             '<label class="pt-gate-label">Email <span aria-hidden="true">*</span>' +
               '<input type="email" name="email" required autocomplete="email" placeholder="you@company.com" />' +
@@ -296,7 +353,7 @@
                 '<option value="other">Other</option>' +
               '</select>' +
             '</label>' +
-            '<button type="submit" class="pt-gate-btn">Unlock the tools →</button>' +
+            '<button type="submit" class="pt-gate-btn">Unlock unlimited access →</button>' +
             '<div class="pt-gate-err" id="ptGateErr" hidden></div>' +
             '<div class="pt-gate-fine">We\'ll never sell your email. Unsubscribe anytime.</div>' +
           '</form>' +
@@ -355,7 +412,7 @@
       // of always dropping them on the homepage grid.
       function onUnlocked(){
         var next = getNextParam();
-        if (next) {
+        if (next && isHomepage()) {
           location.href = next;
           return;
         }
@@ -406,7 +463,7 @@
         '<div class="pt-home-wall-inner">' +
           '<div class="pt-home-wall-badge">FREE FOREVER</div>' +
           '<h2>Browse the free tools</h2>' +
-          '<p>12 field-ready tools for permit prep. One email unlocks the whole site — forever, no login, no password.</p>' +
+          '<p>12 field-ready tools. One email unlocks unlimited use on this browser — forever, no login, no password.</p>' +
           '<button type="button" class="pt-home-wall-btn" id="ptHomeWallBtn">Browse tools →</button>' +
           '<div class="pt-home-wall-fine">Built by the team behind PermitAIO. We\'ll never sell your email.</div>' +
         '</div>' +
@@ -419,23 +476,18 @@
   }
 
   // Trigger logic:
-  // - Homepage + not captured: install the wall (grid hidden, button opens gate).
-  // - Homepage + captured: no gate, no wall — full grid visible.
-  // - Tool page + not captured: bounce back to homepage where the wall lives.
-  // - Tool page + captured: no gate, tool loads immediately.
+  // - Already captured: repair cookie/localStorage, never show the gate again.
+  // - Homepage + not captured: wall over the grid.
+  // - Tool page + not captured: overlay gate ON this page (do not bounce home).
   function initGate(){
     if (document.body && document.body.getAttribute("data-skip-gate") === "true") return;
+    repairCapture();
     if (isCaptured()) return;
     if (isHomepage()) {
       installHomepageWall();
-      // Arrived here bounced from a specific tool (shared link or direct
-      // card click before ever unlocking) — open the gate immediately
-      // instead of making them click "Browse tools" first.
       if (getNextParam()) showGate();
     } else {
-      // Send them home so the wall can capture them there.
-      var current = location.pathname + location.search;
-      location.replace('/index.html?next=' + encodeURIComponent(current));
+      showGate();
     }
   }
 
